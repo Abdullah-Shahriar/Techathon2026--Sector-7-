@@ -556,3 +556,57 @@ This file is append-only. Add new completed milestones with timestamps, files cr
 ### Known Limitations
 
 - A Python process is listening on `0.0.0.0:4000`, while the Node backend is listening on IPv6 `::4000`. Keep frontend and simulator backend URLs as `http://localhost:4000`, or stop the Python process before using `127.0.0.1:4000`.
+
+## 2026-07-04 Smoke Artifact And Cost Display Fix
+
+### Completed Milestones
+
+- Confirmed `room-node-smoke` was not defined by the simulator catalog or source files.
+- Removed the leftover `room-node-smoke` live-validation artifact from the local `officepulse` MongoDB database.
+- Reconciled the local dev database so the three real simulator nodes map to `Drawing Room`, `Work Room 1`, and `Work Room 2` separately.
+- Added backend validation so a room cannot be assigned to more than one active/offline ESP32 node.
+- Added a backend regression test for one ESP32 room node per room.
+- Changed the top frontend metric from projected monthly estimate to actual `costBdtThisMonth`.
+- Improved frontend pending-node room name suggestions for `room-node-drawing`, `room-node-work1`, and `room-node-work2`.
+
+### Files Created Or Modified
+
+- `backend/src/nodes/node.service.ts`
+- `backend/src/rooms/room.service.ts`
+- `backend/tests/officepulse.test.ts`
+- `frontend/src/app/page.tsx`
+- `AGENT_CURRENT_TASK.md`
+- `COMPLETED_WORK.md`
+
+### Local Database Cleanup
+
+Removed rows tied only to `room-node-smoke`:
+
+- `latest_device_states`: 1
+- `usage_intervals`: 2
+- `alerts`: 3
+- `devices`: 1
+- `telemetry_events`: 3
+- `node_sequence_logs`: 3
+- `node_discovery_events`: 2
+- `esp32_nodes`: 1
+
+Follow-up check found zero matching smoke nodes, devices, and telemetry events.
+
+Reconciled existing simulator node mappings:
+
+- `room-node-drawing` -> `Drawing Room`
+- `room-node-work1` -> `Work Room 1`
+- `room-node-work2` -> `Work Room 2`
+
+### Commands Run
+
+- `npm run build -w backend`
+- `npm test -w backend`
+- `npm run build -w frontend`
+
+### Validation Results
+
+- Backend build passed.
+- Backend tests passed: 7 tests, 7 passing.
+- Frontend build passed.

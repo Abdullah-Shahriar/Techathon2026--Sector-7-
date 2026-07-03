@@ -46,6 +46,7 @@ export async function attachNodeToRoom(nodeId: string, roomId: string): Promise<
   if (!room) {
     throw new Error("Room not found");
   }
+  await assertRoomAvailableForNode(nodeId, room._id);
 
   const node = await Esp32Node.findOneAndUpdate(
     { nodeId },
@@ -56,4 +57,16 @@ export async function attachNodeToRoom(nodeId: string, roomId: string): Promise<
   await NodeDiscoveryEvent.updateMany({ nodeId }, { $set: { status: "handled" } });
   emitRealtime("office_state_updated", { reason: "node_assigned", nodeId, roomId });
   return node;
+}
+
+export async function assertRoomAvailableForNode(nodeId: string, roomId: unknown): Promise<void> {
+  const existing = await Esp32Node.findOne({
+    roomId,
+    nodeId: { $ne: nodeId },
+    status: { $in: ["active", "offline"] }
+  }).lean();
+
+  if (existing) {
+    throw new Error(`Room is already assigned to ${existing.nodeId}`);
+  }
 }

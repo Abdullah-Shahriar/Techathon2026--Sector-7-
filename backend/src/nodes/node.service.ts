@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Device, Esp32Node, NodeDiscoveryEvent, Room } from "../models/index.js";
 import { emitRealtime } from "../realtime/socket.js";
-import { createRoomSchema } from "../rooms/room.service.js";
+import { assertRoomAvailableForNode, createRoomSchema } from "../rooms/room.service.js";
 
 export const assignRoomSchema = z.object({
   roomId: z.string().min(1)
@@ -21,6 +21,8 @@ export async function assignNodeToRoom(nodeId: string, input: unknown): Promise<
   if (!room) {
     throw new Error("Room not found");
   }
+
+  await assertRoomAvailableForNode(nodeId, room._id);
 
   const node = await Esp32Node.findOneAndUpdate(
     { nodeId },
@@ -42,6 +44,9 @@ export async function createRoomFromNode(nodeId: string, input: unknown): Promis
   const node = await Esp32Node.findOne({ nodeId });
   if (!node) {
     throw new Error("Node not found");
+  }
+  if (node.roomId) {
+    throw new Error("Node is already assigned to a room");
   }
 
   const room = await Room.create(parsed);

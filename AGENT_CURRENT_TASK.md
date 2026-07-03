@@ -69,6 +69,11 @@ Implement the OfficePulse AI MongoDB-backed backend and a basic Next.js verifica
 - [x] Add dynamic node, room, and device discovery APIs.
 - [x] Add backend-owned latest state, usage interval, cost, settings, and alert logic.
 - [x] Add basic responsive Next.js frontend that only calls backend APIs.
+- [x] Remove leftover `room-node-smoke` validation artifact from the local dev MongoDB.
+- [x] Reconcile local dev MongoDB so each real simulator node maps to its own correct room.
+- [x] Prevent assigning more than one active/offline ESP32 node to the same room.
+- [x] Change the top dashboard cost metric from projected monthly estimate to actual month-to-date cost.
+- [x] Improve pending-node room-name suggestions for the three simulator room nodes.
 
 ## Files Being Created
 
@@ -135,6 +140,14 @@ npm run build
 npm run seed -w backend
 ```
 
+Latest validation for duplicate-node guard and dashboard cost display:
+
+```bash
+npm run build -w backend
+npm test -w backend
+npm run build -w frontend
+```
+
 Runtime smoke check completed:
 
 ```bash
@@ -149,6 +162,7 @@ npx --yes --package @playwright/cli playwright-cli open http://localhost:5100/
 - MongoDB must be running locally for `npm run dev -w backend`, `npm run seed -w backend`, and live API smoke tests.
 - Local `.env` files have been created for `backend/`, `frontend/`, and `simulator/`.
 - Keep frontend and simulator backend URLs as `http://localhost:4000`; a separate Python process currently owns IPv4 `0.0.0.0:4000`, so `http://127.0.0.1:4000` can hang.
+- Use the isolated `officepulse_test` database for backend tests and avoid inserting validation-only nodes into the default `officepulse` dev database.
 - Future dashboard and bot work must use backend APIs only.
 - Real ESP32 firmware must preserve the telemetry contract documented in `PROJECT_PLAN.md`.
 - The mock backend is intentionally minimal and only supports simulator validation before the real backend exists.

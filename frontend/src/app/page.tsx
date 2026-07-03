@@ -305,9 +305,9 @@ export default function DashboardPage() {
         <Metric label="Current Power" value={`${state?.officeSummary.currentPowerWatts ?? 0} W`} />
         <Metric label="Current" value={`${state?.officeSummary.approxCurrentAmps ?? 0} A`} />
         <Metric label="Voltage" value={`${state?.officeSummary.averageVoltageVolts ?? 0} V`} />
-        <Metric label="Today Units" value={`${state?.officeSummary.unitKwhToday ?? 0} kWh`} />
-        <Metric label="Today Cost" value={`BDT ${state?.officeSummary.costBdtToday ?? 0}`} />
-        <Metric label="Monthly Estimate" value={`BDT ${state?.officeSummary.estimatedMonthlyBillBdt ?? 0}`} />
+        <Metric label="Today Units" value={`${formatNumber(state?.officeSummary.unitKwhToday ?? 0, 6)} kWh`} />
+        <Metric label="Today Cost" value={`BDT ${formatNumber(state?.officeSummary.costBdtToday ?? 0, 2)}`} />
+        <Metric label="This Month Cost" value={`BDT ${formatNumber(state?.officeSummary.costBdtThisMonth ?? 0, 2)}`} />
       </section>
 
       <section className="panel">
@@ -500,7 +500,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function NodeActions({ node, rooms, onDone }: { node: NodeSummary; rooms: RoomSummary[]; onDone: () => Promise<void> }) {
-  const [roomName, setRoomName] = useState(node.nodeId.replace("room-node-", "").replaceAll("-", " "));
+  const [roomName, setRoomName] = useState(suggestRoomNameFromNodeId(node.nodeId));
   const [roomId, setRoomId] = useState(rooms[0]?.roomId ?? "");
 
   async function createRoom(event: FormEvent) {
@@ -1060,6 +1060,16 @@ function toIsoDateTime(value: string): string {
 
   const parsed = new Date(trimmed);
   return Number.isNaN(parsed.getTime()) ? trimmed : parsed.toISOString();
+}
+
+function suggestRoomNameFromNodeId(nodeId: string): string {
+  const knownRooms: Record<string, string> = {
+    "room-node-drawing": "Drawing Room",
+    "room-node-work1": "Work Room 1",
+    "room-node-work2": "Work Room 2"
+  };
+
+  return knownRooms[nodeId] ?? nodeId.replace(/^room-node-/, "").replaceAll("-", " ");
 }
 
 function parseThresholdJson(value: string): Record<string, unknown> | null {

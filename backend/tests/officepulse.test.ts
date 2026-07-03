@@ -39,6 +39,7 @@ const {
 } = await import("../src/usage/usage.service.js");
 const { evaluateAggregateAlerts, getEffectiveAlertSetting } = await import("../src/alerts/alert.service.js");
 const { getSettings } = await import("../src/settings/settings.service.js");
+const { assignNodeToRoom, createRoomFromNode } = await import("../src/nodes/node.service.js");
 const { zonedDateTimeToUtc } = await import("../src/utils/time.js");
 
 await connectMongo();
@@ -216,6 +217,27 @@ test("custom usage APIs support summary, rooms, devices, and custom timeline gro
   assert.equal(timeline.intervalSeconds, 3600);
   assert.equal(timeline.buckets.length, 2);
   assert.deepEqual(timeline.buckets.map((bucket) => bucket.unitKwh), [0.06, 0.12]);
+});
+
+test("node assignment keeps one ESP32 room node per room", async () => {
+  const room = await Room.create({ name: "Drawing Room" });
+  await Esp32Node.create({ nodeId: "room-node-drawing", status: "pending" });
+  await Esp32Node.create({ nodeId: "room-node-work1", status: "pending" });
+
+  await assignNodeToRoom("room-node-drawing", { roomId: String(room._id) });
+
+  await assert.rejects(
+    () => assignNodeToRoom("room-node-work1", { roomId: String(room._id) }),
+    /Room is already assigned to room-node-drawing/
+  );
+  await assert.rejects(
+    () => createRoomFromNode("room-node-drawing", { name: "Duplicate Drawing" }),
+    /Node is already assigned to a room/
+  );
+
+  const blockedNode = await Esp32Node.findOne({ nodeId: "room-node-work1" }).lean();
+  assert.equal(blockedNode?.status, "pending");
+  assert.equal(blockedNode?.roomId, null);
 });
 
 test("alert settings resolve with device over room over global priority", async () => {
