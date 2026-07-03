@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark light">
+    <title>OfficePulse Simulator Control</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Fake ESP32 Control Center</p>
+          <h1>OfficePulse Simulator</h1>
+        </div>
+        <div class="header-actions">
+          <button class="button button-ghost" id="refreshButton" type="button">Refresh</button>
+          <button class="button button-primary" id="sendNowHeaderButton" type="button">Send All Nodes</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="status-bar" aria-label="Simulator status">
+          <div class="status-tile">
+            <span class="label">Simulator Mode</span>
+            <strong id="simulatorMode">Loading</strong>
+          </div>
+          <div class="status-tile">
+            <span class="label">Auto State</span>
+            <strong id="autoState">Loading</strong>
+          </div>
+          <div class="status-tile">
+            <span class="label">Backend Target</span>
+            <strong id="backendTarget">Loading</strong>
+          </div>
+          <div class="status-tile">
+            <span class="label">Telemetry Endpoint</span>
+            <strong id="telemetryEndpoint">Loading</strong>
+          </div>
+          <div class="status-tile">
+            <span class="label">Backend Connection</span>
+            <strong id="backendConnection">Idle</strong>
+          </div>
+          <div class="status-tile">
+            <span class="label">Last Telemetry</span>
+            <strong id="lastTelemetry">None</strong>
+          </div>
+          <div class="status-tile">
+            <span class="label">Auto Tick</span>
+            <strong id="tickInterval">Loading</strong>
+          </div>
+          <div class="status-tile">
+            <span class="label">Heartbeat</span>
+            <strong id="heartbeatInterval">Loading</strong>
+          </div>
+          <div class="status-tile">
+            <span class="label">Dry Run</span>
+            <strong id="dryRun">Loading</strong>
+          </div>
+        </section>
+
+        <section class="notice hidden" id="errorNotice" role="status" aria-live="polite"></section>
+
+        <section class="overview-grid" aria-label="Power overview">
+          <article class="panel power-hero">
+            <div class="panel-heading">
+              <div>
+                <span class="label">Office Load</span>
+                <h2><span id="officePower">0</span>W</h2>
+              </div>
+              <span class="reference">Max 495W</span>
+            </div>
+            <div class="meter" aria-hidden="true">
+              <span id="officePowerMeter"></span>
+            </div>
+            <div class="overview-stats">
+              <div>
+                <span class="label">Devices ON</span>
+                <strong id="devicesOnCount">0 / 15</strong>
+              </div>
+              <div>
+                <span class="label">Room Nodes</span>
+                <strong id="roomNodeCount">0 / 3</strong>
+              </div>
+            </div>
+          </article>
+
+          <div class="room-summary-grid" id="roomSummaryGrid" aria-label="Per-room power"></div>
+        </section>
+
+        <section class="control-strip" aria-label="Simulation controls">
+          <button class="button button-primary" data-post="/simulation/mode/manual" type="button">Manual Mode</button>
+          <button class="button button-success" data-post="/simulation/mode/auto" type="button">Auto Mode</button>
+          <button class="button button-warning" data-post="/simulation/pause" type="button">Pause Auto</button>
+          <button class="button button-success" data-post="/simulation/resume" type="button">Resume Auto</button>
+          <button class="button button-danger" data-post="/simulation/reset" type="button">Reset</button>
+          <button class="button button-primary" data-post="/telemetry/send-all-now" type="button">Send All ESP32 Nodes</button>
+        </section>
+
+        <section class="node-send-grid" id="nodeSendGrid" aria-label="ESP32 node send controls"></section>
+
+        <section class="rooms-grid" id="roomsGrid" aria-label="Room controls and devices"></section>
+
+        <section class="lower-grid">
+          <article class="panel telemetry-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="label">Latest Telemetry</span>
+                <h2>All Room Nodes</h2>
+              </div>
+              <span class="reference">boot, heartbeat, state_change, manual_sync</span>
+            </div>
+            <div class="telemetry-card-grid" id="telemetryCards"></div>
+          </article>
+
+          <article class="panel event-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="label">Event Log</span>
+                <h2>Recent Activity</h2>
+              </div>
+              <span class="reference" id="eventCount">0 events</span>
+            </div>
+            <ol class="event-list" id="eventList"></ol>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <template id="roomCardTemplate">
+      <article class="panel room-card">
+        <div class="room-card-header">
+          <div>
+            <span class="label room-node"></span>
+            <h2></h2>
+          </div>
+          <span class="power-pill"></span>
+        </div>
+        <div class="node-telemetry"></div>
+        <div class="meter" aria-hidden="true"><span></span></div>
+        <div class="room-actions">
+          <button class="button button-success" type="button" data-room-action="all-on">All ON</button>
+          <button class="button button-muted" type="button" data-room-action="all-off">All OFF</button>
+          <button class="button button-primary" type="button" data-room-action="send-now">Send Node</button>
+        </div>
+        <div class="devices-grid"></div>
+      </article>
+    </template>
+
+    <template id="deviceCardTemplate">
+      <article class="device-card">
+        <div class="device-topline">
+          <div class="device-indicator" aria-hidden="true">
+            <span></span>
+          </div>
+          <div>
+            <h3></h3>
+            <span class="device-type"></span>
+          </div>
+          <span class="status-badge"></span>
+        </div>
+        <dl class="device-facts">
+          <div>
+            <dt>Power</dt>
+            <dd data-field="powerWatts"></dd>
+          </div>
+          <div>
+            <dt>Rated</dt>
+            <dd data-field="ratedPowerWatts"></dd>
+          </div>
+          <div>
+            <dt>Voltage</dt>
+            <dd data-field="voltageVolts"></dd>
+          </div>
+          <div>
+            <dt>Current</dt>
+            <dd data-field="currentAmps"></dd>
+          </div>
+          <div>
+            <dt>Profile</dt>
+            <dd data-field="measurementProfile"></dd>
+          </div>
+          <div>
+            <dt>Allowed</dt>
+            <dd data-field="allowedRange"></dd>
+          </div>
+        </dl>
+        <form class="wattage-form">
+          <label>
+            <span class="label">Rated W</span>
+            <input type="number" min="0" step="1" data-wattage-field="ratedPowerWatts">
+          </label>
+          <label>
+            <span class="label">Custom W</span>
+            <input type="number" min="0" step="1" data-wattage-field="customPowerWatts">
+          </label>
+          <label>
+            <span class="label">Measurement Profile</span>
+            <select data-measurement-profile>
+              <option value="rated">Rated</option>
+              <option value="low">Low</option>
+              <option value="max">Max</option>
+              <option value="variable">Variable</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <div class="wattage-actions">
+            <button class="button button-muted" type="button" data-wattage-action="apply">Apply Settings</button>
+            <button class="button button-ghost" type="button" data-wattage-action="reset">Reset Watts</button>
+          </div>
+        </form>
+        <label class="switch-control">
+          <input type="checkbox" data-device-switch>
+          <span class="switch-track" aria-hidden="true"><span></span></span>
+          <span class="switch-label">OFF</span>
+        </label>
+      </article>
+    </template>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
