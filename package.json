@@ -1,0 +1,21 @@
+{
+  "name": "officepulse-ai",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "simulator"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build -w backend && npm run build -w frontend && npm run build -w simulator",
+    "seed": "npm run seed -w backend",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:simulator": "npm run dev -w simulator"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

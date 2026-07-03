@@ -64,8 +64,8 @@ Office maximum: 495W.
 Repository modules:
 
 - `simulator/`: TypeScript Node.js simulator for fake ESP32 room nodes. Implemented first.
-- `backend/`: Future backend IoT API. Placeholder only for now.
-- `frontend/`: Future web dashboard. Placeholder only for now.
+- `backend/`: Express + TypeScript + MongoDB/Mongoose IoT API. Receives telemetry and owns state, usage, cost, alerts, and realtime events.
+- `frontend/`: Basic Next.js verification dashboard that reads backend APIs and Socket.IO events.
 - `discord-bot/`: Future Discord bot. Placeholder only for now.
 - `docs/`: Future diagrams, schematics, and demo documentation. Placeholder only for now.
 
@@ -151,7 +151,7 @@ The future backend must accept this exact contract from either the simulator or 
 
 ## Future Backend Plan
 
-The backend will become the single source of truth. It should:
+The backend is the single source of truth. It uses MongoDB with Mongoose models and should:
 
 - Receive `POST /api/iot/telemetry` from simulator or ESP32 room nodes.
 - Validate `x-device-api-key`.
@@ -162,15 +162,33 @@ The backend will become the single source of truth. It should:
 
 Do not let frontend or Discord bot read simulator state directly.
 
+Backend database collections:
+
+- `rooms`
+- `esp32_nodes`
+- `devices`
+- `latest_device_states`
+- `telemetry_events`
+- `usage_intervals`
+- `alerts`
+- `alert_settings`
+- `settings`
+- `node_sequence_logs`
+- `node_discovery_events`
+
+The backend must not use Prisma or SQLite.
+
 ## Future Frontend Plan
 
-The frontend dashboard will:
+The basic frontend dashboard:
 
 - Fetch current state from backend APIs.
 - Subscribe to backend real-time updates.
 - Show room-level and office-level power usage.
 - Show per-device status, current watts, and on-time.
 - Surface after-hours or high-usage alerts from backend data.
+- Let a user create or assign rooms from pending ESP32 nodes.
+- Let a user edit office time, BDT/kWh, heartbeat timeout, and basic alert settings.
 
 Do not move the simulator visualizer into `/frontend`. `/frontend` is reserved for the future boss-facing dashboard.
 

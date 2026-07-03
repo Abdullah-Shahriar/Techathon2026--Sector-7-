@@ -458,3 +458,101 @@ This file is append-only. Add new completed milestones with timestamps, files cr
 ### Next Recommended Steps
 
 - Run the real backend on `http://localhost:4000` with matching `DEVICE_API_KEY=dev-device-key`, then run `npm run dev` from `simulator/` for live telemetry.
+
+## 2026-07-04 MongoDB Backend And Basic Next.js Frontend
+
+### Completed Milestones
+
+- Replaced the backend database plan with MongoDB and Mongoose.
+- Added backend Mongoose models for `rooms`, `esp32_nodes`, `devices`, `latest_device_states`, `telemetry_events`, `usage_intervals`, `alerts`, `alert_settings`, `settings`, `node_sequence_logs`, and `node_discovery_events`.
+- Added strict Zod validation for final room-node telemetry at `POST /api/iot/telemetry`.
+- Added API-key middleware using `x-device-api-key`.
+- Added dynamic pending-node discovery, room creation/assignment, device discovery, latest device state, sequence logs, usage intervals, BDT cost, settings, alerts, and Socket.IO broadcasts.
+- Added a basic responsive Next.js dashboard that reads backend APIs and Socket.IO events only.
+- Added root npm workspaces and scripts for normal install/build/dev flows.
+- Added local runtime env files for backend, frontend, and simulator.
+
+### Files Created Or Modified
+
+- `package.json`
+- `scripts/dev.mjs`
+- `backend/package.json`
+- `backend/.env.example`
+- `backend/.env`
+- `backend/README.md`
+- `backend/src/*`
+- `frontend/package.json`
+- `frontend/.env.example`
+- `frontend/.env.local`
+- `frontend/README.md`
+- `frontend/src/app/*`
+- `simulator/.env`
+- `PROJECT_PLAN.md`
+- `AGENT_CURRENT_TASK.md`
+- `COMPLETED_WORK.md`
+
+### Commands Run
+
+- `npm install`
+- `npm run build -w backend`
+- `npm run build -w frontend`
+- `npm run build`
+- `npm run seed -w backend`
+- Live `POST /api/iot/telemetry` smoke against MongoDB.
+- Browser smoke at desktop and 390px mobile viewport.
+
+### Validation Results
+
+- `npm install`: passed normally with no `--legacy-peer-deps` and no `--force`.
+- `npm run build -w backend`: passed.
+- `npm run build -w frontend`: passed.
+- `npm run build`: passed for backend, frontend, and simulator.
+- `npm run seed -w backend`: passed.
+- Live telemetry smoke accepted the final simulator payload, created a pending node, discovered devices, created a room from the node, and updated backend state/usage.
+- Browser smoke showed live backend data on desktop and mobile, with no horizontal page overflow at 390px.
+- npm audit reported two moderate vulnerabilities; no forced audit fix was applied.
+
+### Known Limitations
+
+- Live backend smoke tests require a running MongoDB service at `mongodb://127.0.0.1:27017/officepulse`.
+- The smoke test inserted sample data into the local `officepulse` MongoDB database.
+- The frontend is intentionally a basic verification dashboard, not the final polished boss-facing dashboard.
+
+### Next Recommended Steps
+
+- Continue with the running backend and frontend, or run `npm run dev` from the repo root after starting MongoDB.
+
+## 2026-07-04 Dashboard Rate Limit Error Handling
+
+### Completed Milestones
+
+- Changed backend rate-limit responses to return the standard JSON envelope instead of plain text.
+- Raised the local API rate limit to better tolerate dashboard polling plus Socket.IO-triggered refreshes.
+- Added frontend response parsing that handles non-JSON error bodies without throwing `Unexpected token`.
+- Debounced frontend Socket.IO refresh events and slowed the backup polling interval to reduce request bursts.
+- Confirmed `localhost:4000` reaches the Node backend.
+
+### Files Created Or Modified
+
+- `backend/src/app.ts`
+- `frontend/src/app/page.tsx`
+- `COMPLETED_WORK.md`
+
+### Commands Run
+
+- `npm run build -w backend`
+- `npm run build -w frontend`
+- Browser smoke at `http://localhost:3000/`
+- Health checks for `localhost:4000` and `127.0.0.1:4000`
+
+### Validation Results
+
+- Backend build passed.
+- Frontend build passed.
+- Dashboard rendered live backend data without the JSON parse error.
+- `http://localhost:4000/health` returned the backend JSON health response.
+- `http://127.0.0.1:4000/health` timed out because a separate Python process owns IPv4 port `4000`.
+
+### Known Limitations
+
+- A Python process is listening on `0.0.0.0:4000`, while the Node backend is listening on IPv6 `::4000`. Keep frontend and simulator backend URLs as `http://localhost:4000`, or stop the Python process before using `127.0.0.1:4000`.

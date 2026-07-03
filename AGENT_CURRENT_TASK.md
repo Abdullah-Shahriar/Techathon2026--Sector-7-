@@ -6,19 +6,23 @@ Read `PROJECT_PLAN.md`, then this file, then `COMPLETED_WORK.md` before doing an
 
 ## Current Task
 
-Make the simulator compatible with the new backend while keeping it a separate fake-ESP32 input layer. The simulator must send one telemetry payload per room node to `POST /api/iot/telemetry`, use `BACKEND_URL` and `DEVICE_API_KEY` from `.env`, include the `x-device-api-key` header, and keep the outbound telemetry contract limited to `schemaVersion`, `nodeId`, `sequence`, `eventType`, `changedDeviceIds`, and `devices`.
+Implement the OfficePulse AI MongoDB-backed backend and a basic Next.js verification frontend after finishing the simulator compatibility pass. Backend stack is MongoDB, Mongoose, TypeScript, Express, Zod, and Socket.IO. Do not use Prisma, SQLite, Prisma migrations, `prisma/schema.prisma`, or prisma scripts.
 
 ## Current Assumptions
 
 - Runtime target is Node.js 20+.
 - Simulator language is TypeScript.
 - npm is the package manager.
+- Backend database is MongoDB at `mongodb://127.0.0.1:27017/officepulse` by default.
+- Backend uses Mongoose models for all database collections.
 - The simulator represents three room nodes and exactly fifteen devices.
 - The simulator is a fake physical device layer, not the backend.
 - Manual Mode is default and must not randomly change devices.
 - Backend maps `nodeId` to rooms and remains responsible for official timestamps, durations, room/office summaries, alerts, kWh, costs, dashboard state, and Discord bot answers.
 - Backend default URL is `http://localhost:4000`.
 - Control API default port is `5100`.
+- Backend API default port is `4000`.
+- Frontend default port is `3000`.
 - Timezone is `Asia/Dhaka`.
 
 ## Current Implementation Checklist
@@ -59,6 +63,12 @@ Make the simulator compatible with the new backend while keeping it a separate f
 - [x] Confirm telemetry client sends `POST /api/iot/telemetry` with `x-device-api-key`.
 - [x] Confirm one payload is built and sent per ESP32 room node.
 - [x] Confirm outgoing telemetry omits simulator-only fields such as timing, room identity, source labels, rated wattage, and measurement-profile controls.
+- [x] Replace backend database plan with MongoDB/Mongoose.
+- [x] Add backend package, Mongoose models, config, API routes, and Socket.IO server.
+- [x] Add telemetry ingestion with strict Zod payload validation.
+- [x] Add dynamic node, room, and device discovery APIs.
+- [x] Add backend-owned latest state, usage interval, cost, settings, and alert logic.
+- [x] Add basic responsive Next.js frontend that only calls backend APIs.
 
 ## Files Being Created
 
@@ -115,6 +125,16 @@ npm run build
 npm run dry -- --no-auto-start
 ```
 
+Latest validation for MongoDB backend and Next.js frontend:
+
+```bash
+npm install
+npm run build -w backend
+npm run build -w frontend
+npm run build
+npm run seed -w backend
+```
+
 Runtime smoke check completed:
 
 ```bash
@@ -126,6 +146,9 @@ npx --yes --package @playwright/cli playwright-cli open http://localhost:5100/
 ## Known Risks
 
 - Live telemetry expects the backend at `http://localhost:4000` by default and should use `DEVICE_API_KEY=dev-device-key` unless overridden in `.env`.
+- MongoDB must be running locally for `npm run dev -w backend`, `npm run seed -w backend`, and live API smoke tests.
+- Local `.env` files have been created for `backend/`, `frontend/`, and `simulator/`.
+- Keep frontend and simulator backend URLs as `http://localhost:4000`; a separate Python process currently owns IPv4 `0.0.0.0:4000`, so `http://127.0.0.1:4000` can hang.
 - Future dashboard and bot work must use backend APIs only.
 - Real ESP32 firmware must preserve the telemetry contract documented in `PROJECT_PLAN.md`.
 - The mock backend is intentionally minimal and only supports simulator validation before the real backend exists.
@@ -136,4 +159,4 @@ npx --yes --package @playwright/cli playwright-cli open http://localhost:5100/
 
 ## Next Task For Future Agent
 
-Implement the backend IoT API that receives final room-node telemetry from `POST /api/iot/telemetry`, maps `nodeId` to rooms, stamps backend-owned timestamps, and becomes the single source of truth.
+Continue from the running backend at `http://localhost:4000` and frontend at `http://localhost:3000`, or start them with `npm run dev` from the repo root.
