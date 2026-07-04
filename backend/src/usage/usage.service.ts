@@ -20,6 +20,10 @@ import {
 import { getSettings } from "../settings/settings.service.js";
 
 const groupByValues = ["second", "minute", "hour", "day", "week", "month", "year", "custom"] as const;
+const queryBoolean = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+}, z.boolean());
 
 export const usageQuerySchema = z.object({
   start: z.string().datetime().optional(),
@@ -39,6 +43,10 @@ export const usageQuerySchema = z.object({
   ]).default("today"),
   roomId: z.string().optional(),
   deviceId: z.string().optional()
+});
+
+export const usageSummaryQuerySchema = usageQuerySchema.extend({
+  includePresets: queryBoolean.default(true)
 });
 
 export const timelineQuerySchema = usageQuerySchema.extend({
@@ -188,17 +196,12 @@ export async function getUsageSummary(query: unknown = {}, now = new Date()): Pr
   presets: Record<string, UsageTotals>;
 }> {
   const settings = await getSettings();
-  const usageRange = resolveUsageRange(query, settings.timezone, now);
-  const [totals, today, yesterday, thisWeek, last7Days, thisMonth, last30Days, thisYear] = await Promise.all([
-    summarizeRange(usageRange.start, usageRange.end, usageRange.filters),
-    summarizeResolvedPreset("today", settings.timezone, now, usageRange.filters),
-    summarizeResolvedPreset("yesterday", settings.timezone, now, usageRange.filters),
-    summarizeResolvedPreset("this_week", settings.timezone, now, usageRange.filters),
-    summarizeResolvedPreset("last_7_days", settings.timezone, now, usageRange.filters),
-    summarizeResolvedPreset("this_month", settings.timezone, now, usageRange.filters),
-    summarizeResolvedPreset("last_30_days", settings.timezone, now, usageRange.filters),
-    summarizeResolvedPreset("this_year", settings.timezone, now, usageRange.filters)
-  ]);
+  const parsed = usageSummaryQuerySchema.parse(query);
+  const usageRange = resolveUsageRange(parsed, settings.timezone, now);
+  const totals = await summarizeRange(usageRange.start, usageRange.end, usageRange.filters);
+  const presets = parsed.includePresets
+    ? await buildUsagePresets(settings.timezone, now, usageRange.filters)
+    : {};
 
   return {
     range: usageRange.range,
@@ -206,7 +209,7 @@ export async function getUsageSummary(query: unknown = {}, now = new Date()): Pr
     end: usageRange.end.toISOString(),
     filters: usageRange.filters,
     totals,
-    presets: { today, yesterday, this_week: thisWeek, last_7_days: last7Days, this_month: thisMonth, last_30_days: last30Days, this_year: thisYear }
+    presets
   };
 }
 
@@ -451,6 +454,28 @@ function summarizeResolvedPreset(
 ): Promise<UsageTotals> {
   const usageRange = resolveUsageRange({ range, ...filters }, timezone, now);
   return summarizeRange(usageRange.start, usageRange.end, filters);
+}
+
+async function buildUsagePresets(timezone: string, now: Date, filters: UsageRange["filters"]): Promise<Record<string, UsageTotals>> {
+  const [today, yesterday, thisWeek, last7Days, thisMonth, last30Days, thisYear] = await Promise.all([
+    summarizeResolvedPreset("today", timezone, now, filters),
+    summarizeResolvedPreset("yesterday", timezone, now, filters),
+    summarizeResolvedPreset("this_week", timezone, now, filters),
+    summarizeResolvedPreset("last_7_days", timezone, now, filters),
+    summarizeResolvedPreset("this_month", timezone, now, filters),
+    summarizeResolvedPreset("last_30_days", timezone, now, filters),
+    summarizeResolvedPreset("this_year", timezone, now, filters)
+  ]);
+
+  return {
+    today,
+    yesterday,
+    this_week: thisWeek,
+    last_7_days: last7Days,
+    this_month: thisMonth,
+    last_30_days: last30Days,
+    this_year: thisYear
+  };
 }
 
 function weightedAverage(records: UsageRecord[], field: keyof Pick<

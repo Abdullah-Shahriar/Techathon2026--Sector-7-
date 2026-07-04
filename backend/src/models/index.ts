@@ -90,6 +90,9 @@ const UsageIntervalSchema = new Schema(
   },
   { timestamps: true, collection: "usage_intervals" }
 );
+UsageIntervalSchema.index({ startAt: 1, endAt: 1 });
+UsageIntervalSchema.index({ roomId: 1, startAt: 1, endAt: 1 });
+UsageIntervalSchema.index({ deviceId: 1, startAt: 1, endAt: 1 });
 
 const AlertSchema = new Schema(
   {

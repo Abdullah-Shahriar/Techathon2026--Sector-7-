@@ -20,20 +20,20 @@ export function baseEmbed(title: string, description?: string): EmbedBuilder {
 
 export function officeStatusEmbed(state: OfficeState, humanText: string): EmbedBuilder {
   const summary = state.officeSummary;
-  return baseEmbed("Hackathon Required Command: Office status", humanText)
+  return baseEmbed("Office status", humanText)
     .setColor(state.activeAlerts.length ? colors.warning : colors.success)
     .addFields(
       { name: "Current power", value: watts(summary.currentPowerWatts), inline: true },
       { name: "Today", value: `${kwh(summary.unitKwhToday)}\n${bdt(summary.costBdtToday)}`, inline: true },
       { name: "Month to date", value: `${kwh(summary.unitKwhThisMonth)}\n${bdt(summary.costBdtThisMonth)}`, inline: true },
       { name: "Rooms/devices", value: `${state.rooms.length} rooms\n${state.devices.filter((device) => device.status === "on").length}/${state.devices.length} devices on`, inline: true },
-      { name: "Nodes", value: `${state.nodes.filter((node) => node.status === "online").length}/${state.nodes.length} online\n${state.pendingNodes.length} pending`, inline: true },
+      { name: "Nodes", value: `${state.nodes.filter((node) => isOnlineNode(node.status)).length}/${state.nodes.length} online\n${state.pendingNodes.length} pending`, inline: true },
       { name: "Alerts", value: `${state.activeAlerts.length} active`, inline: true }
     );
 }
 
 export function roomStatusEmbed(room: RoomSummary, devices: DeviceSummary[], alerts: AlertSummary[], humanText: string): EmbedBuilder {
-  return baseEmbed(`Hackathon Required Command: ${room.name}`, humanText)
+  return baseEmbed(`Room status: ${room.name}`, humanText)
     .setColor(alerts.length ? colors.warning : colors.info)
     .addFields(
       { name: "Power", value: `${watts(room.currentPowerWatts)}\n${amps(room.approxCurrentAmps)}`, inline: true },
@@ -45,7 +45,7 @@ export function roomStatusEmbed(room: RoomSummary, devices: DeviceSummary[], ale
 }
 
 export function usageEmbed(usage: UsageSummaryResponse, humanText: string): EmbedBuilder {
-  return baseEmbed(`Hackathon Required Command: Usage (${usage.range})`, humanText)
+  return baseEmbed(`Usage: ${usage.range}`, humanText)
     .setColor(colors.info)
     .addFields(
       { name: "Total", value: `${kwh(usage.totals.unitKwh)}\n${bdt(usage.totals.costBdt)}`, inline: true },
@@ -148,4 +148,8 @@ function severityEmoji(severity: string): string {
   if (severity === "warning") return "🟡";
   if (severity === "info") return "🔵";
   return "⚪";
+}
+
+function isOnlineNode(status: string): boolean {
+  return status === "active" || status === "online";
 }

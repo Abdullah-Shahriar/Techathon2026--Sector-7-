@@ -44,7 +44,7 @@ const {
 } = await import("../src/usage/usage.service.js");
 const { evaluateAggregateAlerts, getEffectiveAlertSetting } = await import("../src/alerts/alert.service.js");
 const { getSettings } = await import("../src/settings/settings.service.js");
-const { assignNodeToRoom, createRoomFromNode, reassignNodeToRoom, unassignNode } = await import("../src/nodes/node.service.js");
+const { assignNodeToRoom, connectAllPendingNodes, createRoomFromNode, ignoreNode, reassignNodeToRoom, unassignNode } = await import("../src/nodes/node.service.js");
 const { archiveDevice, moveDeviceToRoom, restoreDevice } = await import("../src/devices/device.service.js");
 const { archiveRoom, restoreRoom } = await import("../src/rooms/room.service.js");
 const { zonedDateTimeToUtc } = await import("../src/utils/time.js");
@@ -430,6 +430,32 @@ test("node, room, and device management writes history, audit logs, and resolves
   assert.ok(await AuditLog.findOne({ action: "node_unassigned", resourceId: "room-node-manage" }).lean());
   assert.ok(await AuditLog.findOne({ action: "device_moved", resourceId: String(movedDevice?._id) }).lean());
   assert.ok(await AuditLog.findOne({ action: "room_archived", resourceId: String(room._id) }).lean());
+});
+
+test("connect all pending nodes creates rooms and pairs discovered devices", async () => {
+  await ingestTelemetry(telemetryPayload("room-node-alpha", 1, "boot", "alpha-fan-1", "on", 60), "test-device-key");
+  await ingestTelemetry(telemetryPayload("room-node-beta", 1, "boot", "beta-light-1", "off", 0), "test-device-key");
+
+  const result = await connectAllPendingNodes({ roomNamePrefix: "Auto Room" });
+
+  assert.equal(result.connected, 2);
+  assert.equal(result.skipped, 0);
+  assert.deepEqual(result.results.map((item) => item.status), ["connected", "connected"]);
+
+  const alphaNode = await Esp32Node.findOne({ nodeId: "room-node-alpha" }).lean();
+  const betaNode = await Esp32Node.findOne({ nodeId: "room-node-beta" }).lean();
+  assert.equal(alphaNode?.status, "active");
+  assert.equal(betaNode?.status, "active");
+  assert.ok(alphaNode?.roomId);
+  assert.ok(betaNode?.roomId);
+
+  const alphaDevice = await Device.findOne({ externalDeviceId: "alpha-fan-1" }).lean();
+  const betaDevice = await Device.findOne({ externalDeviceId: "beta-light-1" }).lean();
+  assert.equal(String(alphaDevice?.roomId), String(alphaNode?.roomId));
+  assert.equal(String(betaDevice?.roomId), String(betaNode?.roomId));
+  assert.equal(await Alert.countDocuments({ status: "active", alertType: { $in: ["unknown_esp32_discovered", "new_device_discovered"] } }), 0);
+  assert.equal(await NodeDiscoveryEvent.countDocuments({ status: "handled" }), 4);
+  assert.equal(await Room.countDocuments({ name: /^Auto Room/ }), 2);
 });
 
 test("telemetry schema accepts only the final top-level and device payload contract", () => {

@@ -4,6 +4,7 @@ import { sendOk } from "../utils/api.js";
 import {
   archiveNode,
   assignNodeToRoom,
+  connectAllPendingNodes,
   createRoomFromNode,
   ignoreNode,
   listNodes,
@@ -20,6 +21,10 @@ nodeRouter.get("/", asyncHandler(async (_request, response) => {
 
 nodeRouter.get("/pending", asyncHandler(async (_request, response) => {
   sendOk(response, await listPendingNodes());
+}));
+
+nodeRouter.post("/connect-all", asyncHandler(async (request, response) => {
+  sendOk(response, await connectAllPendingNodes(request.body));
 }));
 
 nodeRouter.post("/:nodeId/assign-room", asyncHandler(async (request, response) => {

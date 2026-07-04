@@ -8,25 +8,28 @@ export class Humanizer {
 
   async officeStatus(state: OfficeState, usage?: UsageSummaryResponse, cooldownKey?: string): Promise<string> {
     const onDevices = state.devices.filter((device) => device.status === "on").length;
-    const onlineNodes = state.nodes.filter((node) => node.status === "online").length;
+    const onlineNodes = state.nodes.filter((node) => isOnlineNode(node.status)).length;
+    const alertText = state.activeAlerts.length
+      ? `${state.activeAlerts.length} active alert(s) need attention.`
+      : "No active alerts are showing right now.";
     const fallback = [
-      `The office is using ${watts(state.officeSummary.currentPowerWatts)} right now.`,
-      `${onDevices} of ${state.devices.length} devices are ON across ${state.rooms.length} room(s).`,
-      `Today is at ${kwh(state.officeSummary.unitKwhToday)} and ${bdt(state.officeSummary.costBdtToday)}, with month-to-date cost at ${bdt(state.officeSummary.costBdtThisMonth)}.`,
-      state.activeAlerts.length
-        ? `${state.activeAlerts.length} active alert(s) need attention.`
-        : "No active alerts are showing right now.",
+      `The office is drawing ${watts(state.officeSummary.currentPowerWatts)} right now, with ${onDevices}/${state.devices.length} devices on across ${state.rooms.length} room(s).`,
+      `Today stands at ${kwh(state.officeSummary.unitKwhToday)} and ${bdt(state.officeSummary.costBdtToday)}; month-to-date is ${bdt(state.officeSummary.costBdtThisMonth)}.`,
+      alertText,
       `${onlineNodes}/${state.nodes.length} ESP32 node(s) are online, with ${state.pendingNodes.length} pending.`
     ].join(" ");
     return await this.aiOrFallback("office status", { officeSummary: state.officeSummary, alerts: state.activeAlerts, nodes: state.nodes, usage }, fallback, cooldownKey);
   }
 
   async roomStatus(room: RoomSummary, devices: DeviceSummary[], alerts: AlertSummary[], cooldownKey?: string): Promise<string> {
+    const onDevices = devices.filter((device) => device.status === "on").length;
+    const deviceText = devices.length
+      ? `${onDevices}/${devices.length} assigned device(s) are on.`
+      : "No devices are assigned to this room yet.";
     const fallback = [
       `${room.name} is using ${watts(room.currentPowerWatts)} right now.`,
-      `${devices.filter((device) => device.status === "on").length}/${devices.length} device(s) are on.`,
-      `Today this room has used ${kwh(room.unitKwhToday)} costing ${bdt(room.costBdtToday)}.`,
-      `Voltage/current are ${room.averageVoltageVolts}V and ${room.approxCurrentAmps}A from backend state.`,
+      deviceText,
+      `Today it has used ${kwh(room.unitKwhToday)} costing ${bdt(room.costBdtToday)}.`,
       alerts.length ? `${alerts.length} active alert(s) need attention.` : "No active room alerts."
     ].join(" ");
     return await this.aiOrFallback("room status", { room, devices, alerts }, fallback, cooldownKey);
@@ -43,10 +46,10 @@ export class Humanizer {
     const topRoomName = topRoom ? roomLabel(rooms.find((room) => room.roomId === topRoom.roomId), topRoom.roomId) : undefined;
     const topDeviceName = topDevice ? devices.find((device) => device.id === topDevice.deviceId)?.name ?? topDevice.deviceId : undefined;
     const fallback = [
-      `${usage.range} usage is ${kwh(usage.totals.unitKwh)} costing ${bdt(usage.totals.costBdt)}.`,
+      `For ${usage.range}, the office has used ${kwh(usage.totals.unitKwh)} costing ${bdt(usage.totals.costBdt)}.`,
       `Office-time usage is ${kwh(usage.totals.officeTimeUnitKwh)}, while off-time usage is ${kwh(usage.totals.offTimeUnitKwh)}.`,
-      topRoom ? `Top room from backend usage is ${topRoomName} at ${kwh(topRoom.unitKwh)}.` : "",
-      topDevice ? `Top device from backend usage is ${topDeviceName} at ${kwh(topDevice.unitKwh)}.` : ""
+      topRoom ? `The highest room is ${topRoomName} at ${kwh(topRoom.unitKwh)}.` : "",
+      topDevice ? `The highest device is ${topDeviceName} at ${kwh(topDevice.unitKwh)}.` : ""
     ].filter(Boolean).join(" ");
     return await this.aiOrFallback("usage summary", { usage, rooms, devices, topRoom, topDevice }, fallback, cooldownKey);
   }
@@ -84,7 +87,7 @@ export class Humanizer {
   }
 
   async nodes(nodes: NodeSummary[], pending: NodeSummary[], cooldownKey?: string): Promise<string> {
-    const online = nodes.filter((node) => node.status === "online").length;
+    const online = nodes.filter((node) => isOnlineNode(node.status)).length;
     const fallback = `${online}/${nodes.length} ESP32 node(s) are online. ${pending.length} pending node(s) still need assignment.`;
     return await this.aiOrFallback("node health", { nodes, pending }, fallback, cooldownKey);
   }
@@ -95,4 +98,8 @@ export class Humanizer {
     logger.debug({ kind }, "Rule-based humanization fallback used");
     return fallback;
   }
+}
+
+function isOnlineNode(status: string): boolean {
+  return status === "active" || status === "online";
 }

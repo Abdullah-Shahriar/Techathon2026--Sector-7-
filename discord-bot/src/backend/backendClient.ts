@@ -21,6 +21,7 @@ export interface UsageQuery {
   roomId?: string;
   deviceId?: string;
   limit?: number;
+  includePresets?: boolean;
 }
 
 export class BackendClient {
@@ -29,7 +30,8 @@ export class BackendClient {
   constructor(
     private readonly baseUrl = config.BACKEND_URL,
     private readonly apiKey = config.BACKEND_API_KEY,
-    private readonly cacheSeconds = config.BACKEND_CACHE_SECONDS
+    private readonly cacheSeconds = config.BACKEND_CACHE_SECONDS,
+    private readonly timeoutMs = config.BACKEND_TIMEOUT_MS
   ) {}
 
   health(): Promise<HealthResponse> {
@@ -66,7 +68,7 @@ export class BackendClient {
   }
 
   usageSummary(query: UsageQuery = {}): Promise<UsageSummaryResponse> {
-    return this.get<UsageSummaryResponse>(`/api/usage/summary?${usageParams(query)}`);
+    return this.get<UsageSummaryResponse>(`/api/usage/summary?${usageParams({ includePresets: false, ...query })}`);
   }
 
   roomUsage(query: UsageQuery = {}): Promise<RoomUsageResponse> {
@@ -89,6 +91,7 @@ export class BackendClient {
     if (this.apiKey) {
       headers.Authorization = `Bearer ${this.apiKey}`;
       headers["x-api-key"] = this.apiKey;
+      headers["x-device-api-key"] = this.apiKey;
     }
 
     const response = await this.fetchWithRetry(`${this.baseUrl}${path}`, { headers });
@@ -98,11 +101,14 @@ export class BackendClient {
     try {
       envelope = text ? JSON.parse(text) as ApiEnvelope<T> : null;
     } catch {
-      throw new FriendlyError(`Backend returned an unreadable response (${response.status}).`);
+      throw new FriendlyError(`Backend returned an unreadable response from ${path} (${response.status}).`);
     }
 
     if (!response.ok || !envelope?.ok) {
       const message = envelope && !envelope.ok ? envelope.error.message : response.statusText;
+      if (response.status === 401) {
+        throw new FriendlyError("The backend rejected the bot API key. Set BACKEND_API_KEY in the bot service to the same secret used by the backend API.");
+      }
       throw new FriendlyError(`Backend request failed: ${message}`);
     }
 
@@ -116,7 +122,7 @@ export class BackendClient {
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 7000);
+      const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
       try {
         const response = await fetch(url, { ...init, signal: controller.signal });
         if (response.status >= 500 && attempt === 0) {
@@ -136,7 +142,7 @@ export class BackendClient {
       }
     }
 
-    throw new FriendlyError("I cannot reach the OfficePulse backend right now. Please check that the backend service is awake, then try again.");
+    throw new FriendlyError(`I cannot reach the OfficePulse backend at ${backendLabel(url)} right now. Make sure the backend service is running and BACKEND_URL points to the public backend URL in production.`);
   }
 }
 
@@ -151,5 +157,15 @@ function usageParams(query: UsageQuery): string {
   if (query.end) params.set("end", query.end);
   if (query.roomId) params.set("roomId", query.roomId);
   if (query.deviceId) params.set("deviceId", query.deviceId);
+  if (query.includePresets !== undefined) params.set("includePresets", String(query.includePresets));
   return params.toString();
+}
+
+function backendLabel(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return parsed.origin;
+  } catch {
+    return url;
+  }
 }

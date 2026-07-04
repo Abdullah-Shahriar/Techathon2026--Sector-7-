@@ -16,6 +16,7 @@ const envSchema = z.object({
   DISCORD_GUILD_ID: optionalString,
   BACKEND_URL: z.string().trim().url().default("http://localhost:4000"),
   BACKEND_API_KEY: optionalString,
+  DEVICE_API_KEY: optionalString,
   GEMINI_API_KEY: optionalString,
   GEMINI_MODEL: z.string().trim().min(1).default("gemini-flash-latest"),
   ALERT_CHANNEL_ID: optionalString,
@@ -26,6 +27,7 @@ const envSchema = z.object({
   ENABLE_AI_HUMANIZATION: booleanString.default(true),
   AI_FALLBACK_TO_RULE_BASED: booleanString.default(true),
   ALERT_POLL_INTERVAL_SECONDS: z.coerce.number().int().positive().default(30),
+  BACKEND_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   COMMAND_COOLDOWN_SECONDS: z.coerce.number().int().nonnegative().default(3),
   AI_COOLDOWN_SECONDS: z.coerce.number().int().nonnegative().default(5),
   BACKEND_CACHE_SECONDS: z.coerce.number().int().nonnegative().default(5),
@@ -41,7 +43,8 @@ if (!parsed.success) {
 
 export const config = {
   ...parsed.data,
-  BACKEND_URL: parsed.data.BACKEND_URL.replace(/\/+$/, "")
+  BACKEND_URL: parsed.data.BACKEND_URL.replace(/\/+$/, ""),
+  BACKEND_API_KEY: parsed.data.BACKEND_API_KEY ?? parsed.data.DEVICE_API_KEY
 };
 
 export type BotConfig = typeof config;

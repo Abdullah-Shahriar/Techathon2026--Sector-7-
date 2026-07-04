@@ -42,7 +42,23 @@ function prefixOptions(commandName: string, args: string[], rest: string): Recor
   if (commandName === "room") return { room: rest };
   if (commandName === "device") return { device: rest };
   if (commandName === "devices") return { room: rest };
-  if (commandName === "usage" || commandName === "top" || commandName === "waste") return { range: cleanUserArgument(args[0]) };
+  if (commandName === "usage" || commandName === "top" || commandName === "waste") return usagePrefixOptions(args);
   if (commandName === "alerts") return { status: cleanUserArgument(args[0]), severity: cleanUserArgument(args[1]) };
   return {};
+}
+
+function usagePrefixOptions(args: string[]): Record<string, string | undefined> {
+  const normalized = args.map((arg) => cleanUserArgument(arg));
+  const markerIndex = normalized.findIndex((arg) => ["room", "device"].includes(arg.toLowerCase()));
+  if (markerIndex >= 0) {
+    const marker = normalized[markerIndex]?.toLowerCase();
+    const value = cleanUserArgument(normalized.slice(markerIndex + 1).join(" "));
+    return {
+      range: markerIndex > 0 ? normalized[0] : undefined,
+      room: marker === "room" ? value : undefined,
+      device: marker === "device" ? value : undefined
+    };
+  }
+
+  return { range: cleanUserArgument(normalized[0]) };
 }

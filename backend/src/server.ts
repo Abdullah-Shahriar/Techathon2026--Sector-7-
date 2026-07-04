@@ -4,7 +4,7 @@ import { config } from "./config.js";
 import { connectMongo, disconnectMongo } from "./db/mongoose.js";
 import { logger } from "./logger.js";
 import { createApp } from "./app.js";
-import { checkOfflineNodes, evaluateAggregateAlerts } from "./alerts/alert.service.js";
+import { checkOfflineNodes, scheduleAggregateAlerts } from "./alerts/alert.service.js";
 import { ensureSettings } from "./settings/settings.service.js";
 import { setSocketServer } from "./realtime/socket.js";
 
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
   const offlineTimer = setInterval(() => {
     void (async () => {
       await checkOfflineNodes();
-      await evaluateAggregateAlerts();
+      scheduleAggregateAlerts();
     })().catch((error) => logger.error({ error }, "Background alert check failed"));
   }, 10_000);
 

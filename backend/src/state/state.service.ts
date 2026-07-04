@@ -1,11 +1,9 @@
 import { Alert, Device, Esp32Node, LatestDeviceState, Room } from "../models/index.js";
-import { checkOfflineNodes } from "../alerts/alert.service.js";
 import { buildUsageRecords, totalsFromRecords, type UsageRecord, type UsageTotals } from "../usage/usage.service.js";
 import { getSettings } from "../settings/settings.service.js";
 import { addDays, daysInZonedMonth, round, startOfZonedDay, startOfZonedMonth } from "../utils/time.js";
 
 export async function getOfficeState(now = new Date()): Promise<unknown> {
-  await checkOfflineNodes(now);
   const settings = await getSettings();
   const [rooms, nodes, devices, latestStates, activeAlerts] = await Promise.all([
     Room.find({ isActive: true }).sort({ name: 1 }).lean(),

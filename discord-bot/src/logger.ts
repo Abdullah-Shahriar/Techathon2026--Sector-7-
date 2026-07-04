@@ -8,9 +8,11 @@ export const logger = pino({
       "DISCORD_BOT_TOKEN",
       "GEMINI_API_KEY",
       "BACKEND_API_KEY",
+      "DEVICE_API_KEY",
       "*.DISCORD_BOT_TOKEN",
       "*.GEMINI_API_KEY",
-      "*.BACKEND_API_KEY"
+      "*.BACKEND_API_KEY",
+      "*.DEVICE_API_KEY"
     ],
     censor: "[redacted]"
   }

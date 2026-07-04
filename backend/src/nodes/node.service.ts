@@ -26,6 +26,11 @@ export const unassignNodeSchema = z.object({
   moveExistingDevicesFromNow: z.boolean().default(true)
 });
 
+export const connectAllPendingNodesSchema = z.object({
+  roomNamePrefix: z.string().trim().min(1).default("Node"),
+  includeOffline: z.boolean().default(false)
+});
+
 export async function listNodes(): Promise<unknown[]> {
   return Esp32Node.find({}).sort({ createdAt: -1 });
 }
@@ -99,6 +104,46 @@ export async function createRoomFromNode(nodeId: string, input: unknown): Promis
   return { room, node };
 }
 
+export async function connectAllPendingNodes(input: unknown = {}): Promise<{
+  connected: number;
+  skipped: number;
+  results: Array<{ nodeId: string; status: "connected" | "skipped"; roomId?: string; roomName?: string; reason?: string }>;
+}> {
+  const parsed = connectAllPendingNodesSchema.parse(input);
+  const statuses = parsed.includeOffline ? ["pending", "offline"] : ["pending"];
+  const nodes = await Esp32Node.find({ roomId: null, status: { $in: statuses } }).sort({ createdAt: 1 });
+  const results: Array<{ nodeId: string; status: "connected" | "skipped"; roomId?: string; roomName?: string; reason?: string }> = [];
+
+  for (const node of nodes) {
+    try {
+      const roomName = buildAutoRoomName(parsed.roomNamePrefix, node.nodeId);
+      const created = await createRoomFromNode(node.nodeId, {
+        name: roomName,
+        description: `Auto-created for ${node.nodeId}`
+      }) as { room?: { _id?: unknown; name?: string } };
+
+      results.push({
+        nodeId: node.nodeId,
+        status: "connected",
+        roomId: created.room?._id ? String(created.room._id) : undefined,
+        roomName: created.room?.name ?? roomName
+      });
+    } catch (error) {
+      results.push({
+        nodeId: node.nodeId,
+        status: "skipped",
+        reason: error instanceof Error ? error.message : "Unknown connection error"
+      });
+    }
+  }
+
+  return {
+    connected: results.filter((result) => result.status === "connected").length,
+    skipped: results.filter((result) => result.status === "skipped").length,
+    results
+  };
+}
+
 export async function unassignNode(nodeId: string, input: unknown = {}): Promise<unknown> {
   const parsed = unassignNodeSchema.parse(input);
   const node = await Esp32Node.findOne({ nodeId });
@@ -107,12 +152,16 @@ export async function unassignNode(nodeId: string, input: unknown = {}): Promise
   }
 
   const previousRoomId = node.roomId ?? null;
+  const shouldBecomePending = node.status !== "ignored" && node.status !== "archived";
   node.roomId = null;
-  node.status = node.status === "ignored" || node.status === "archived" ? node.status : "pending";
+  node.status = shouldBecomePending ? "pending" : node.status;
   await node.save();
 
   if (parsed.moveExistingDevicesFromNow) {
     await moveDevicesForNode(nodeId, previousRoomId, null, "unassign", "node_unassigned");
+  }
+  if (shouldBecomePending) {
+    await markNodeDiscoveryPending(nodeId);
   }
   await recordNodeRoomHistory(nodeId, previousRoomId, null, "unassign", "node unassigned");
   await recordAuditLog({
@@ -147,7 +196,7 @@ export async function reassignNodeToRoom(nodeId: string, input: unknown): Promis
   node.status = "active";
   await node.save();
 
-  if (parsed.mode === "move_existing_devices_from_now") {
+  if (parsed.mode === "future_only" || parsed.mode === "move_existing_devices_from_now") {
     await moveDevicesForNode(nodeId, previousRoomId, room._id, parsed.mode, "node_reassigned");
   }
   if (parsed.mode === "create_new_devices_for_new_room") {
@@ -182,7 +231,8 @@ export async function archiveNode(nodeId: string): Promise<unknown> {
   node.roomId = null;
   node.status = "archived";
   await node.save();
-  await Device.updateMany({ nodeId }, { $set: { isActive: false, archivedAt: new Date(), roomId: null } });
+  const deviceIds = await archiveDevicesForNode(nodeId, previousRoomId, "archive", "node archived");
+  await resolveAlertsForNode(nodeId, deviceIds);
   await recordNodeRoomHistory(nodeId, previousRoomId, null, "archive", "node archived");
   await recordAuditLog({
     action: "node_archived",
@@ -195,22 +245,24 @@ export async function archiveNode(nodeId: string): Promise<unknown> {
 }
 
 export async function ignoreNode(nodeId: string): Promise<unknown> {
-  const node = await Esp32Node.findOneAndUpdate(
-    { nodeId },
-    { $set: { status: "ignored", roomId: null } },
-    { new: true }
-  );
+  const node = await Esp32Node.findOne({ nodeId });
   if (!node) {
     throw new Error("Node not found");
   }
-  await Device.updateMany({ nodeId }, { $set: { isActive: false, roomId: null, archivedAt: new Date() } });
+  const previousRoomId = node.roomId ?? null;
+  node.status = "ignored";
+  node.roomId = null;
+  await node.save();
+
+  const deviceIds = await archiveDevicesForNode(nodeId, previousRoomId, "ignore", "node ignored");
   await NodeDiscoveryEvent.updateMany({ nodeId }, { $set: { status: "ignored" } });
-  await resolveMatchingAlerts({ alertType: "unknown_esp32_discovered", nodeId, now: new Date() });
-  await resolveMatchingAlerts({ alertType: "new_device_discovered", nodeId, now: new Date() });
+  await resolveAlertsForNode(nodeId, deviceIds);
+  await recordNodeRoomHistory(nodeId, previousRoomId, null, "ignore", "node ignored");
   await recordAuditLog({
     action: "node_ignored",
     resourceType: "node",
-    resourceId: nodeId
+    resourceId: nodeId,
+    dataJson: { fromRoomId: previousRoomId ? String(previousRoomId) : null, archivedDeviceCount: deviceIds.length }
   });
   emitRealtime("office_state_updated", { reason: "node_ignored", nodeId });
   return node;
@@ -221,6 +273,10 @@ async function markNodeDiscoveryHandled(nodeId: string): Promise<void> {
   await NodeDiscoveryEvent.updateMany({ nodeId }, { $set: { status: "handled" } });
   await resolveMatchingAlerts({ alertType: "unknown_esp32_discovered", nodeId, now });
   await resolveMatchingAlerts({ alertType: "new_device_discovered", nodeId, now });
+}
+
+async function markNodeDiscoveryPending(nodeId: string): Promise<void> {
+  await NodeDiscoveryEvent.updateMany({ nodeId }, { $set: { status: "pending" } });
 }
 
 async function moveDevicesForNode(
@@ -246,6 +302,34 @@ async function moveDevicesForNode(
       mode,
       reason,
       changedAt: new Date()
+    });
+  }
+  return devices.map((device) => device._id);
+}
+
+async function archiveDevicesForNode(
+  nodeId: string,
+  fromRoomId: unknown,
+  mode: string,
+  reason: string
+): Promise<unknown[]> {
+  const now = new Date();
+  const devices = await Device.find({ nodeId });
+  for (const device of devices) {
+    const previousRoomId = device.roomId ?? fromRoomId ?? null;
+    device.roomId = null;
+    device.isActive = false;
+    device.archivedAt = now;
+    await device.save();
+    await DeviceRoomHistory.create({
+      deviceId: device._id,
+      nodeId,
+      externalDeviceId: device.externalDeviceId,
+      fromRoomId: previousRoomId,
+      toRoomId: null,
+      mode,
+      reason,
+      changedAt: now
     });
   }
   return devices.map((device) => device._id);
@@ -288,4 +372,42 @@ async function recordNodeRoomHistory(
     reason,
     changedAt: new Date()
   });
+}
+
+function buildAutoRoomName(prefix: string, nodeId: string): string {
+  const cleanedNode = nodeId
+    .replace(/[_-]+/g, " ")
+    .replace(/[^a-zA-Z0-9 ]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  const title = cleanedNode
+    ? cleanedNode.replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : "Device Node";
+  return `${prefix.trim()} ${title}`.trim();
+}
+
+async function resolveAlertsForNode(nodeId: string, deviceIds: unknown[], now = new Date()): Promise<void> {
+  const nodeAlertTypes = [
+    "unknown_esp32_discovered",
+    "new_device_discovered",
+    "missed_telemetry_sequence",
+    "esp32_offline",
+    "missing_heartbeat",
+    "esp32_back_online"
+  ];
+  for (const alertType of nodeAlertTypes) {
+    await resolveMatchingAlerts({ alertType, nodeId, now });
+  }
+
+  const deviceAlertTypes = [
+    "off_time_device_on",
+    "device_on_power_zero",
+    "device_off_power_flowing",
+    "abnormal_high_power"
+  ];
+  for (const deviceId of deviceIds) {
+    for (const alertType of deviceAlertTypes) {
+      await resolveMatchingAlerts({ alertType, deviceId, now });
+    }
+  }
 }
