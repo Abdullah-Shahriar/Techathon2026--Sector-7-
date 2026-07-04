@@ -63,11 +63,6 @@ export class TelemetryClient {
   }
 
   async sendBatch(payloads: Array<{ payload: TelemetryPayload; roomId: string }>): Promise<SendResult[]> {
-    const results: SendResult[] = [];
-    for (const item of payloads) {
-      results.push(await this.sendPayload(item.payload, item.roomId));
-    }
-
-    return results;
+    return Promise.all(payloads.map((item) => this.sendPayload(item.payload, item.roomId)));
   }
 }

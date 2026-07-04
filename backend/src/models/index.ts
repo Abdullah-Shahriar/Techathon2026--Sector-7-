@@ -12,6 +12,37 @@ const RoomSchema = new Schema(
   { timestamps: true, collection: "rooms" }
 );
 
+const VisualizerLayoutSchema = new Schema(
+  {
+    key: { type: String, required: true, unique: true, default: "default" },
+    canvas: {
+      width: { type: Number, required: true, default: 1200 },
+      height: { type: Number, required: true, default: 720 }
+    },
+    rooms: {
+      type: [{
+        roomId: { type: String, required: true },
+        x: { type: Number, required: true },
+        y: { type: Number, required: true },
+        width: { type: Number, required: true },
+        height: { type: Number, required: true },
+        theme: { type: String, enum: ["tile", "wood", "carpet"], default: "tile" }
+      }],
+      default: []
+    },
+    devices: {
+      type: [{
+        deviceId: { type: String, required: true },
+        roomId: { type: String, required: true },
+        x: { type: Number, required: true },
+        y: { type: Number, required: true }
+      }],
+      default: []
+    }
+  },
+  { timestamps: true, collection: "visualizer_layouts" }
+);
+
 const Esp32NodeSchema = new Schema(
   {
     nodeId: { type: String, required: true, unique: true, index: true, trim: true },
@@ -229,6 +260,7 @@ const AuditLogSchema = new Schema(
 
 export type MongoDocument = mongoose.Document & Record<string, any>;
 export type RoomDocument = MongoDocument;
+export type VisualizerLayoutDocument = MongoDocument;
 export type Esp32NodeDocument = MongoDocument;
 export type DeviceDocument = MongoDocument;
 export type LatestDeviceStateDocument = MongoDocument;
@@ -249,6 +281,7 @@ function model<T extends MongoDocument>(name: string, schema: Schema): Model<T> 
 }
 
 export const Room = model<RoomDocument>("Room", RoomSchema);
+export const VisualizerLayout = model<VisualizerLayoutDocument>("VisualizerLayout", VisualizerLayoutSchema);
 export const Esp32Node = model<Esp32NodeDocument>("Esp32Node", Esp32NodeSchema);
 export const Device = model<DeviceDocument>("Device", DeviceSchema);
 export const LatestDeviceState = model<LatestDeviceStateDocument>("LatestDeviceState", LatestDeviceStateSchema);

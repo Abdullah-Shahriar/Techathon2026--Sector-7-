@@ -10,7 +10,8 @@ import type {
   RoomUsageResponse,
   TimelineResponse,
   UsageFilters,
-  UsageSummaryResponse
+  UsageSummaryResponse,
+  VisualizerLayout
 } from "./types";
 
 export const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
@@ -97,5 +98,7 @@ export const api = {
   resolveAlert: (id: string) => apiPatch<unknown>(`/api/alerts/${id}/resolve`, {}),
   alertOccurrences: (id: string) => apiGet<unknown[]>(`/api/alerts/${id}/occurrences`),
   updateSettings: (body: unknown) => apiPatch<unknown>("/api/settings", body),
-  updateAlertSettings: (body: unknown) => apiPatch<unknown>("/api/alerts/settings", body)
+  updateAlertSettings: (body: unknown) => apiPatch<unknown>("/api/alerts/settings", body),
+  visualizerLayout: () => apiGet<VisualizerLayout>("/api/visualizer/layout"),
+  saveVisualizerLayout: (body: VisualizerLayout) => apiPatch<VisualizerLayout>("/api/visualizer/layout", body)
 };

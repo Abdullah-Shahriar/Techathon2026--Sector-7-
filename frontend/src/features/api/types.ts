@@ -200,6 +200,30 @@ export interface ManagedDevice {
   archivedAt?: string | null;
 }
 
+export type VisualizerRoomTheme = "tile" | "wood" | "carpet";
+
+export interface VisualizerRoomPlacement {
+  roomId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  theme: VisualizerRoomTheme;
+}
+
+export interface VisualizerDevicePlacement {
+  deviceId: string;
+  roomId: string;
+  x: number;
+  y: number;
+}
+
+export interface VisualizerLayout {
+  canvas: { width: number; height: number };
+  rooms: VisualizerRoomPlacement[];
+  devices: VisualizerDevicePlacement[];
+}
+
 export interface AuditLog {
   _id: string;
   action: string;

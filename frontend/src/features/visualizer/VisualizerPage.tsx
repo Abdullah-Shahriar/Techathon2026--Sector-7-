@@ -1,11 +1,8 @@
 "use client";
 
-import { AlertTriangle, Building2, Cpu, Zap } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { MetricGrid, StatCard } from "@/components/shared/StatCard";
 import { ErrorState, LoadingState } from "@/components/shared/States";
 import { useOfficeDataContext } from "@/features/api/OfficeDataProvider";
-import { formatBdt, formatKwh, formatWatts } from "@/lib/format";
 import { OfficeFloorPlan } from "./OfficeFloorPlan";
 
 export function VisualizerPage() {
@@ -18,15 +15,9 @@ export function VisualizerPage() {
     <div className="space-y-5">
       <PageHeader
         eyebrow="Visualizer"
-        title="Office map"
-        description="Room load, device state, and active alerts."
+        title="Office floor plan"
+        description="Live room and device state from a top-down view."
       />
-      <MetricGrid>
-        <StatCard label="Office load" value={formatWatts(state.officeSummary.currentPowerWatts)} helper={`${state.devices.filter((device) => device.status === "on").length} devices on`} icon={Zap} />
-        <StatCard label="Today usage" value={formatKwh(state.officeSummary.unitKwhToday)} helper={formatBdt(state.officeSummary.costBdtToday)} icon={Building2} />
-        <StatCard label="Active alerts" value={String(state.activeAlerts.length)} helper="Click highlighted rooms for detail" icon={AlertTriangle} tone={state.activeAlerts.length ? "warning" : "success"} />
-        <StatCard label="Inventory" value={`${state.devices.length} devices`} helper={`${state.rooms.length} active rooms`} icon={Cpu} />
-      </MetricGrid>
       <OfficeFloorPlan rooms={state.rooms} devices={state.devices} nodes={state.nodes} alerts={state.activeAlerts} />
     </div>
   );

@@ -1,12 +1,29 @@
 import { createHash } from "node:crypto";
+import mongoose from "mongoose";
 import { Device, Esp32Node, LatestDeviceState, NodeDiscoveryEvent, NodeSequenceLog, TelemetryEvent } from "../models/index.js";
 import { getAlertThresholdNumber, scheduleAggregateAlerts, upsertActiveAlert, resolveMatchingAlerts } from "../alerts/alert.service.js";
 import { emitRealtime } from "../realtime/socket.js";
+import { logger } from "../logger.js";
 import { getSettings } from "../settings/settings.service.js";
 import type { SequenceStatus } from "../types/domain.js";
 import { inferDeviceType, inferExpectedPowerWatts, isOfficeTime, titleFromDeviceId } from "../utils/time.js";
 import { recordUsageIntervalFromPreviousState } from "../usage/usage.service.js";
 import type { TelemetryPayload } from "./telemetry.schema.js";
+
+interface DeviceAlertInput {
+  nodeId: string;
+  deviceId: unknown;
+  roomId: unknown;
+  externalDeviceId: string;
+  status: "on" | "off";
+  powerWatts: number;
+  expectedPowerWatts: number | null | undefined;
+  receivedAt: Date;
+}
+
+const pendingDeviceAlertEvaluations = new Map<string, DeviceAlertInput>();
+let deviceAlertEvaluationTimer: NodeJS.Timeout | null = null;
+let deviceAlertEvaluationInFlight = false;
 
 export async function storeInvalidTelemetry(payload: unknown, error: string): Promise<void> {
   const maybePayload = payload as Partial<TelemetryPayload> | null;
@@ -67,17 +84,19 @@ export async function ingestTelemetry(payload: TelemetryPayload, apiKey: string)
   }
   if (node.status === "offline") {
     node.status = node.roomId ? "active" : "pending";
-    await resolveMatchingAlerts({ alertType: "esp32_offline", nodeId: node.nodeId, now: receivedAt });
-    await resolveMatchingAlerts({ alertType: "missing_heartbeat", nodeId: node.nodeId, now: receivedAt });
-    await upsertActiveAlert({
-      alertType: "esp32_back_online",
-      scope: "node",
-      roomId: node.roomId,
-      nodeId: node.nodeId,
-      title: "ESP32 node back online",
-      message: `${node.nodeId} resumed telemetry.`,
-      severity: "info",
-      now: receivedAt
+    runTelemetrySideEffect("resolve node back online alerts", async () => {
+      await resolveMatchingAlerts({ alertType: "esp32_offline", nodeId: node.nodeId, now: receivedAt });
+      await resolveMatchingAlerts({ alertType: "missing_heartbeat", nodeId: node.nodeId, now: receivedAt });
+      await upsertActiveAlert({
+        alertType: "esp32_back_online",
+        scope: "node",
+        roomId: node.roomId,
+        nodeId: node.nodeId,
+        title: "ESP32 node back online",
+        message: `${node.nodeId} resumed telemetry.`,
+        severity: "info",
+        now: receivedAt
+      });
     });
     emitRealtime("node_online", { nodeId: node.nodeId });
   }
@@ -88,7 +107,7 @@ export async function ingestTelemetry(payload: TelemetryPayload, apiKey: string)
   }
 
   if (sequenceStatus === "missed") {
-    await upsertActiveAlert({
+    runTelemetrySideEffect("create missed sequence alert", () => upsertActiveAlert({
       alertType: "missed_telemetry_sequence",
       scope: "node",
       roomId: node.roomId,
@@ -98,7 +117,7 @@ export async function ingestTelemetry(payload: TelemetryPayload, apiKey: string)
       severity: "warning",
       dataJson: { sequence: payload.sequence },
       now: receivedAt
-    });
+    }));
   }
 
   let discoveredDevices = 0;
@@ -139,7 +158,7 @@ export async function ingestTelemetry(payload: TelemetryPayload, apiKey: string)
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
 
-      await evaluateDeviceAlerts({
+      queueDeviceAlertEvaluation({
         nodeId: payload.nodeId,
         deviceId: device._id,
         roomId: device.roomId,
@@ -299,16 +318,58 @@ async function upsertDeviceFromTelemetry(
   return { discovered: true };
 }
 
-async function evaluateDeviceAlerts(input: {
-  nodeId: string;
-  deviceId: unknown;
-  roomId: unknown;
-  externalDeviceId: string;
-  status: "on" | "off";
-  powerWatts: number;
-  expectedPowerWatts: number | null | undefined;
-  receivedAt: Date;
-}): Promise<void> {
+function queueDeviceAlertEvaluation(input: DeviceAlertInput): void {
+  pendingDeviceAlertEvaluations.set(String(input.deviceId), input);
+  scheduleDeviceAlertFlush();
+}
+
+function scheduleDeviceAlertFlush(): void {
+  if (deviceAlertEvaluationTimer || deviceAlertEvaluationInFlight) {
+    return;
+  }
+
+  deviceAlertEvaluationTimer = setTimeout(() => {
+    deviceAlertEvaluationTimer = null;
+    void flushDeviceAlertEvaluations();
+  }, 250);
+  deviceAlertEvaluationTimer.unref?.();
+}
+
+async function flushDeviceAlertEvaluations(): Promise<void> {
+  if (deviceAlertEvaluationInFlight) {
+    scheduleDeviceAlertFlush();
+    return;
+  }
+
+  deviceAlertEvaluationInFlight = true;
+  const evaluations = [...pendingDeviceAlertEvaluations.values()];
+  pendingDeviceAlertEvaluations.clear();
+
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return;
+    }
+
+    for (const input of evaluations) {
+      await evaluateDeviceAlerts(input);
+    }
+  } catch (error) {
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Queued telemetry alert evaluation failed");
+  } finally {
+    deviceAlertEvaluationInFlight = false;
+    if (pendingDeviceAlertEvaluations.size > 0) {
+      scheduleDeviceAlertFlush();
+    }
+  }
+}
+
+function runTelemetrySideEffect(label: string, task: () => Promise<unknown>): void {
+  void task().catch((error) => {
+    logger.error({ label, error: error instanceof Error ? error.message : String(error) }, "Telemetry side effect failed");
+  });
+}
+
+async function evaluateDeviceAlerts(input: DeviceAlertInput): Promise<void> {
   const settings = await getSettings();
 
   if (input.status === "on" && !isOfficeTime(input.receivedAt, settings as any)) {

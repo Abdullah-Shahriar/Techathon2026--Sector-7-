@@ -15,6 +15,7 @@ import { stateRouter } from "./state/state.routes.js";
 import { settingsRouter } from "./settings/settings.routes.js";
 import { telemetryRouter } from "./telemetry/telemetry.routes.js";
 import { usageRouter } from "./usage/usage.routes.js";
+import { visualizerRouter } from "./visualizer/visualizer.routes.js";
 import { logger } from "./logger.js";
 
 export function createApp(): express.Express {
@@ -49,6 +50,7 @@ export function createApp(): express.Express {
   app.use("/api/alerts", alertRouter);
   app.use("/api/settings", settingsRouter);
   app.use("/api/audit-logs", auditRouter);
+  app.use("/api/visualizer", visualizerRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
