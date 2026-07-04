@@ -17,9 +17,9 @@ export function VisualizerPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Graphical view"
-        title="Top-view office energy map."
-        description="A hackathon-ready visualizer powered by backend room/device state. Lights glow when on, fans spin when on, and alert rooms are emphasized."
+        eyebrow="Visualizer"
+        title="Office map"
+        description="Room load, device state, and active alerts."
       />
       <MetricGrid>
         <StatCard label="Office load" value={formatWatts(state.officeSummary.currentPowerWatts)} helper={`${state.devices.filter((device) => device.status === "on").length} devices on`} icon={Zap} />

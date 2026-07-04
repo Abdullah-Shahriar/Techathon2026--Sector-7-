@@ -34,9 +34,9 @@ export function OverviewPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Executive overview"
-        title="Live energy operations, without the data-wall noise."
-        description="A focused view of office load, cost, off-time waste, room health, and alerts from the backend source of truth."
+        eyebrow="Dashboard"
+        title="Energy overview"
+        description="Current load, cost, alerts, and room health."
         actions={
           <>
             <Button asChild variant="outline"><Link href="/visualizer"><Building2 className="h-4 w-4" />Visualizer</Link></Button>
@@ -48,14 +48,14 @@ export function OverviewPage() {
       <MetricGrid>
         <StatCard label="Current load" value={formatWatts(summary.currentPowerWatts)} helper={`${summary.approxCurrentAmps} A live draw`} icon={Zap} />
         <StatCard label="Today units" value={formatKwh(summary.unitKwhToday)} helper={formatBdt(summary.costBdtToday)} icon={TimerReset} />
-        <StatCard label="Today cost" value={formatBdt(summary.costBdtToday)} helper="Backend calculated" icon={CircleDollarSign} />
+        <StatCard label="Today cost" value={formatBdt(summary.costBdtToday)} helper="Across active intervals" icon={CircleDollarSign} />
         <StatCard label="Monthly estimate" value={formatBdt(summary.estimatedMonthlyBillBdt)} helper={`${formatKwh(summary.unitKwhThisMonth)} this month`} icon={CircleDollarSign} />
         <StatCard label="Off-time cost" value={formatBdt(summary.offTimeCostBdtToday)} helper={formatKwh(summary.offTimeUnitKwhToday)} icon={AlertTriangle} tone={summary.offTimeCostBdtToday > 0 ? "warning" : "success"} />
         <StatCard label="Active alerts" value={String(state.activeAlerts.length)} helper={`${state.pendingNodes.length} pending nodes`} icon={BellRing} tone={state.activeAlerts.length ? "danger" : "success"} />
       </MetricGrid>
 
-      <section className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
-        <ChartCard title="Energy trend" description="Average power by backend timeline bucket.">
+      <section className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+        <ChartCard title="Energy trend" description="Average power by interval.">
           <div className="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trendData}>
@@ -72,7 +72,7 @@ export function OverviewPage() {
         <Card>
           <CardHeader>
             <CardTitle>Operations snapshot</CardTitle>
-            <CardDescription>Room nodes and inventory state.</CardDescription>
+            <CardDescription>Rooms, devices, nodes, and alerts.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             <SnapshotItem icon={<Building2 className="h-4 w-4" />} label="Rooms" value={`${state.rooms.length} active`} />
@@ -84,8 +84,8 @@ export function OverviewPage() {
       </section>
 
       <section>
-        <SectionHeader title="Rooms" description="A glanceable card per office area." actions={<Button asChild variant="outline"><Link href="/rooms">Manage rooms</Link></Button>} />
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        <SectionHeader title="Rooms" description="Live room state." actions={<Button asChild variant="outline"><Link href="/rooms">Manage rooms</Link></Button>} />
+        <div className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {state.rooms.map((room) => {
             const alertCount = state.activeAlerts.filter((alert) => alert.roomId === room.roomId).length;
             return <RoomCard key={room.roomId} room={room} alertCount={alertCount} />;
@@ -93,8 +93,8 @@ export function OverviewPage() {
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <ChartCard title="Room cost comparison" description="Top backend room totals for the selected range.">
+      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <ChartCard title="Room cost comparison" description="Top room totals for the selected range.">
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topRooms.map((room) => ({
@@ -114,7 +114,7 @@ export function OverviewPage() {
         <Card>
           <CardHeader>
             <CardTitle>Top consuming devices</CardTitle>
-            <CardDescription>Ranked by backend-calculated cost today.</CardDescription>
+            <CardDescription>Ranked by cost today.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             {topDevices.length === 0 ? <EmptyState title="No device usage yet" /> : topDevices.map((device) => <DeviceCard key={device.id} device={device} />)}
@@ -122,11 +122,11 @@ export function OverviewPage() {
         </Card>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-2">
+      <section className="grid gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Recent alerts</CardTitle>
-            <CardDescription>Active backend alerts that need attention.</CardDescription>
+            <CardDescription>Active alerts that need attention.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {state.activeAlerts.length === 0 && <EmptyState title="No active alerts" description="The office is clear right now." />}

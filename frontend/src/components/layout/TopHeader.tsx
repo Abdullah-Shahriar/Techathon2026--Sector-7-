@@ -15,20 +15,20 @@ export function TopHeader() {
   const live = connectionState === "live";
 
   return (
-    <header className="sticky top-0 z-20 border-b bg-background/85 px-4 py-3 backdrop-blur lg:px-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase text-muted-foreground">OfficePulse AI</p>
-          <h1 className="text-2xl font-semibold tracking-normal">{pageTitleForPath(pathname)}</h1>
+    <header className="sticky top-0 z-20 flex min-h-14 items-center border-b bg-background px-4">
+      <div className="flex w-full flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-0">
+        <div className="flex items-center gap-2">
+          <div className="hidden h-4 w-px bg-border lg:block" />
+          <h1 className="text-base font-semibold tracking-normal">{pageTitleForPath(pathname)}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={live ? "success" : "warning"}>
+          <Badge variant={live ? "outline" : "warning"} className={live ? "bg-background text-foreground" : ""}>
             {live ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
             {connectionState}
           </Badge>
           <NotificationToggle />
           <ThemeToggle />
-          <Button onClick={() => void refresh()}>
+          <Button variant="outline" onClick={() => void refresh()}>
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>

@@ -50,15 +50,15 @@ export function SettingsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="System settings"
-        title="Configure energy policy and alert behavior."
-        description="Settings remain backend-owned. This page edits the policy values used by backend cost, time-window, heartbeat, and alert-repeat logic."
+        eyebrow="Configuration"
+        title="Settings"
+        description="Energy policy, tariff, timezone, heartbeat, and alert rules."
       />
 
       <section className="grid gap-5 xl:grid-cols-[1fr_0.7fr]">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><SettingsIcon className="h-5 w-5 text-primary" />Office policy</CardTitle>
+            <CardTitle className="flex items-center gap-2"><SettingsIcon className="h-5 w-5 text-muted-foreground" />Office policy</CardTitle>
             <CardDescription>Office time, tariff, timezone, and heartbeat settings.</CardDescription>
           </CardHeader>
           <CardContent>

@@ -14,11 +14,11 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <section className={cn("mb-5 flex flex-col gap-4 rounded-lg border bg-card p-5 shadow-soft sm:flex-row sm:items-end sm:justify-between", className)}>
+    <section className={cn("flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div className="max-w-3xl">
-        {eyebrow && <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">{eyebrow}</p>}
-        <h2 className="text-2xl font-semibold tracking-normal sm:text-3xl">{title}</h2>
-        {description && <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>}
+        {eyebrow && <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">{eyebrow}</p>}
+        <h2 className="text-2xl font-semibold tracking-normal">{title}</h2>
+        {description && <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </section>
@@ -27,9 +27,9 @@ export function PageHeader({
 
 export function SectionHeader({ title, description, actions }: { title: string; description?: string; actions?: React.ReactNode }) {
   return (
-    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h3 className="text-lg font-semibold">{title}</h3>
+        <h3 className="text-base font-semibold">{title}</h3>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}

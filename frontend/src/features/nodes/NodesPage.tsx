@@ -30,9 +30,9 @@ export function NodesPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="ESP32 node health"
-        title="Discover, assign, unbind, and forget room nodes safely."
-        description="Node actions are explicit and backend-owned. Safe reassignment modes make it clear whether devices or history should move."
+        eyebrow="Hardware"
+        title="Nodes"
+        description="Discover, assign, unbind, reassign, forget, or archive ESP32 nodes."
       />
 
       <section>
@@ -84,7 +84,7 @@ function PendingNodeCard({ node, rooms, onDone }: { node: NodeSummary; rooms: Ro
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="flex items-center gap-2"><RadioTower className="h-4 w-4 text-primary" />{node.nodeId}</CardTitle>
+            <CardTitle className="flex items-center gap-2"><RadioTower className="h-4 w-4 text-muted-foreground" />{node.nodeId}</CardTitle>
             <CardDescription>Sequence {node.lastSequence ?? "-"} / last seen {formatDate(node.lastSeenAt)}</CardDescription>
           </div>
           <StatusBadge status={node.status} />

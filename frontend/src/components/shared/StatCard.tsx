@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export function StatCard({
@@ -18,23 +18,17 @@ export function StatCard({
   return (
     <Card className={cn(
       "overflow-hidden",
-      tone === "warning" && "border-warning/30 bg-warning/5",
-      tone === "danger" && "border-destructive/30 bg-destructive/5",
-      tone === "success" && "border-success/30 bg-success/5"
+      tone === "warning" && "border-warning/40",
+      tone === "danger" && "border-destructive/40",
+      tone === "success" && "border-success/40"
     )}>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-normal">{value}</p>
-            {helper && <p className="mt-2 text-xs text-muted-foreground">{helper}</p>}
-          </div>
-          {Icon && (
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
-              <Icon className="h-5 w-5" />
-            </div>
-          )}
-        </div>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+        {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <div className="text-2xl font-semibold tracking-normal">{value}</div>
+        {helper && <p className="mt-1 text-xs text-muted-foreground">{helper}</p>}
       </CardContent>
     </Card>
   );

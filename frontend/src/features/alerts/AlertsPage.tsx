@@ -39,9 +39,9 @@ export function AlertsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Alert center"
-        title="Operational alerts with repeat history."
-        description="Review active, acknowledged, and resolved backend alerts. Notification permission is user-triggered and duplicate-safe."
+        eyebrow="Monitoring"
+        title="Alerts"
+        description="Active, acknowledged, and resolved operational alerts."
         actions={<NotificationToggle />}
       />
 

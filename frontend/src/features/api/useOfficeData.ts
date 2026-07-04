@@ -30,12 +30,13 @@ export function useOfficeData() {
   const [error, setError] = useState<string | null>(null);
   const refreshInFlight = useRef(false);
   const refreshTimer = useRef<number | null>(null);
+  const hasState = useRef(false);
 
   const refresh = useCallback(async () => {
     if (refreshInFlight.current) return;
     refreshInFlight.current = true;
     try {
-      const state = await api.state();
+      const state = await loadStateWithRetry();
       const [alertSettings, alertTypes, managedRooms, managedDevices, auditLogs] = await Promise.allSettled([
         api.alertSettings(),
         api.alertTypes(),
@@ -51,11 +52,12 @@ export function useOfficeData() {
         managedDevices: settledValue(managedDevices, devicesFromState(state)),
         auditLogs: settledValue(auditLogs, [])
       });
+      hasState.current = true;
       setConnectionState("live");
       setError(null);
     } catch (requestError) {
-      setConnectionState("offline");
-      setError(requestError instanceof Error ? requestError.message : String(requestError));
+      setConnectionState((current) => hasState.current ? "polling" : current === "connecting" ? "offline" : current);
+      setError(hasState.current ? null : requestError instanceof Error ? requestError.message : String(requestError));
     } finally {
       refreshInFlight.current = false;
     }
@@ -97,6 +99,23 @@ export function useOfficeData() {
 
 function settledValue<T>(result: PromiseSettledResult<T>, fallback: T): T {
   return result.status === "fulfilled" ? result.value : fallback;
+}
+
+async function loadStateWithRetry(): Promise<OfficeState> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await api.state();
+    } catch (error) {
+      lastError = error;
+      await delay(350 * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function roomsFromState(state: OfficeState): ManagedRoom[] {

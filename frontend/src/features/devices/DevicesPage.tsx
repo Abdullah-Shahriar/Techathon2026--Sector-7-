@@ -40,9 +40,9 @@ export function DevicesPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Device inventory"
-        title="Manage devices with context, not raw collections."
-        description="Filter devices by room, type, and state. Open a device to rename it, update backend catalog metadata, move rooms, archive, or restore."
+        eyebrow="Inventory"
+        title="Devices"
+        description="Filter, inspect, rename, move, archive, or restore devices."
       />
 
       <Card>
@@ -70,7 +70,7 @@ export function DevicesPage() {
       </Card>
 
       <section>
-        <SectionHeader title="Devices" description={`${visibleDevices.length} matching devices`} />
+        <SectionHeader title="Device list" description={`${visibleDevices.length} matching devices`} />
         <ResponsiveTableOrCards
           columns={["Device", "Room", "State", "Power", "Usage", "Last changed"]}
           rows={visibleDevices.map((device) => {
@@ -146,7 +146,7 @@ function DeviceSheet({ managedDevice, liveDevice, rooms, onDone }: { managedDevi
 function DeviceTitle({ device }: { device: ManagedDevice }) {
   return (
     <div className="flex items-center gap-2">
-      <Cpu className="h-4 w-4 text-primary" />
+      <Cpu className="h-4 w-4 text-muted-foreground" />
       <div>
         <p className="font-medium">{device.name}</p>
         <p className="text-xs text-muted-foreground">{device.externalDeviceId}</p>

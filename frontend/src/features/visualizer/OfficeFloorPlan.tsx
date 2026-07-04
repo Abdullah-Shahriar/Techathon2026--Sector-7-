@@ -13,7 +13,7 @@ export function OfficeFloorPlan({
   alerts: AlertSummary[];
 }) {
   return (
-    <div className="energy-grid-bg rounded-lg border bg-card p-4 shadow-soft">
+    <div className="rounded-xl border bg-card p-4 shadow-sm">
       <div className="grid min-h-[640px] gap-4 lg:grid-cols-3 lg:grid-rows-[1.1fr_0.9fr]">
         {rooms.map((room, index) => (
           <RoomVisualBlock
@@ -26,7 +26,7 @@ export function OfficeFloorPlan({
           />
         ))}
         {devices.some((device) => !device.roomId) && (
-          <div className="rounded-lg border border-dashed bg-card/80 p-4">
+          <div className="rounded-xl border border-dashed bg-muted/30 p-4">
             <p className="font-semibold">Unassigned devices</p>
             <p className="mt-1 text-sm text-muted-foreground">{devices.filter((device) => !device.roomId).length} devices need room mapping.</p>
           </div>

@@ -24,9 +24,9 @@ export function RoomsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Room operations"
-        title="Manage rooms as office assets, not database rows."
-        description="Review live room load, cost, devices, and node status. Rename, archive, or restore rooms through backend APIs."
+        eyebrow="Operations"
+        title="Rooms"
+        description="Room load, cost, devices, node status, and management actions."
       />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -47,14 +47,14 @@ export function RoomsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Room analytics</CardTitle>
-          <CardDescription>Backend-calculated daily room totals.</CardDescription>
+          <CardDescription>Daily room totals.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {state.rooms.map((room) => (
             <div key={room.roomId} className="rounded-lg border p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <p className="font-semibold">{room.name}</p>
-                <DoorOpen className="h-4 w-4 text-primary" />
+                <DoorOpen className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <Metric label="Power" value={formatWatts(room.currentPowerWatts)} />

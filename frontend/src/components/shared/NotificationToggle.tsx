@@ -17,7 +17,7 @@ export function NotificationToggle() {
   }
 
   return (
-    <Button variant="outline" onClick={() => void enable()} disabled={permission === "granted" || permission === "unsupported"}>
+    <Button variant="outline" size="sm" onClick={() => void enable()} disabled={permission === "granted" || permission === "unsupported"}>
       <BellRing className="h-4 w-4" />
       <span className="hidden sm:inline">{permission === "granted" ? "Notifications on" : "Enable alerts"}</span>
     </Button>

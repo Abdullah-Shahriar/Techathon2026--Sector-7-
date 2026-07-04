@@ -33,8 +33,8 @@ export function RoomVisualBlock({
           role="button"
           tabIndex={0}
           className={cn(
-            "group relative flex min-h-[260px] flex-col rounded-lg border bg-card p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-primary/40",
-            activeAlerts.length > 0 && "border-warning/70 shadow-[0_0_0_1px_hsl(var(--warning)/0.45)]",
+            "group relative flex min-h-[260px] flex-col rounded-xl border bg-background p-4 text-left transition hover:bg-accent/40",
+            activeAlerts.length > 0 && "border-warning/60",
             className
           )}
         >
@@ -44,7 +44,7 @@ export function RoomVisualBlock({
               <p className="text-sm text-muted-foreground">{devices.filter((device) => device.status === "on").length}/{devices.length} devices on</p>
             </div>
             {activeAlerts.length > 0 ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-warning/20 px-2 py-1 text-xs font-medium text-warning-foreground">
+              <span className="inline-flex items-center gap-1 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-xs font-medium text-warning-foreground">
                 <AlertTriangle className="h-3.5 w-3.5" />{activeAlerts.length}
               </span>
             ) : (
@@ -70,7 +70,7 @@ export function RoomVisualBlock({
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-2 rounded-md bg-muted/35 p-3 text-xs">
+          <div className="grid grid-cols-3 gap-2 rounded-md bg-muted/40 p-3 text-xs">
             <div><p className="text-muted-foreground">Power</p><p className="font-semibold">{formatWatts(room.currentPowerWatts)}</p></div>
             <div><p className="text-muted-foreground">Units</p><p className="font-semibold">{formatKwh(room.unitKwhToday)}</p></div>
             <div><p className="text-muted-foreground">Cost</p><p className="font-semibold">{formatBdt(room.costBdtToday)}</p></div>
@@ -92,8 +92,8 @@ function RoomDetail({ room, devices, node, alerts }: { room: RoomSummary; device
         <DetailMetric label="Today units" value={formatKwh(room.unitKwhToday)} />
         <DetailMetric label="Off-time cost" value={formatBdt(room.offTimeCostBdtToday)} />
       </div>
-      <div className="rounded-lg border p-4">
-        <p className="mb-3 flex items-center gap-2 font-medium"><Cpu className="h-4 w-4 text-primary" />Node</p>
+      <div className="rounded-xl border p-4">
+        <p className="mb-3 flex items-center gap-2 font-medium"><Cpu className="h-4 w-4 text-muted-foreground" />Node</p>
         <p className="text-sm text-muted-foreground">{node?.nodeId ?? "No node assigned"}</p>
         {node && <div className="mt-3"><StatusBadge status={node.status} /></div>}
       </div>
@@ -105,7 +105,7 @@ function RoomDetail({ room, devices, node, alerts }: { room: RoomSummary; device
         <div className="space-y-3">
           <p className="font-medium">Room alerts</p>
           {alerts.map((alert) => (
-            <div key={alert.id} className="rounded-lg border border-warning/40 bg-warning/10 p-3">
+            <div key={alert.id} className="rounded-xl border border-warning/40 bg-warning/10 p-3">
               <p className="font-medium">{alert.title}</p>
               <p className="mt-1 text-sm text-muted-foreground">{alert.message}</p>
             </div>
@@ -118,7 +118,7 @@ function RoomDetail({ room, devices, node, alerts }: { room: RoomSummary; device
 
 function DeviceDetail({ device, compact }: { device: DeviceSummary; compact?: boolean }) {
   return (
-    <div className={cn("rounded-lg border p-4", compact && "p-3")}>
+    <div className={cn("rounded-xl border p-4", compact && "p-3")}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="font-medium">{device.name}</p>

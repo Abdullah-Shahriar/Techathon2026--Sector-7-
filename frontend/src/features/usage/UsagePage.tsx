@@ -22,9 +22,9 @@ export function UsagePage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Usage analytics"
-        title="Cost and energy analytics built from backend intervals."
-        description="Choose a range, grouping, and filters. The frontend only displays backend-calculated kWh, BDT, office-time, and off-time totals."
+        eyebrow="Analytics"
+        title="Usage"
+        description="Cost, energy, office-time, and off-time totals."
       />
       <UsageFilters
         filters={analytics.filters}
