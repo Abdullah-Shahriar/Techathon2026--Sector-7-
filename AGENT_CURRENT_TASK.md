@@ -6,7 +6,7 @@ Read `PROJECT_PLAN.md`, then this file, then `COMPLETED_WORK.md` before doing an
 
 ## Current Task
 
-Complete the OfficePulse AI backend/dashboard pass: fix remaining MongoDB/Mongoose backend correctness gaps, add safe room/node/device management, audit/history support, alert occurrence visibility, richer usage queries, and replace the basic Next.js verification dashboard with a professional responsive dashboard plus graphical office visualizer. Backend stack remains MongoDB, Mongoose, TypeScript, Express, Zod, and Socket.IO. Do not use Prisma, SQLite, Prisma migrations, `prisma/schema.prisma`, or prisma scripts.
+Fix the OfficePulse AI Discord bot rejection items: make `!status`, `!room <name>`, and `!usage` the polished primary hackathon commands; route every command reply through Gemini humanization when enabled with high-quality rule-based fallback; fix room lookup for case/space/bracket/fuzzy matches; add `/room` autocomplete; improve backend retry/offline UX; and keep all energy, cost, timing, room total, office total, and alert logic owned by the backend.
 
 ## Current Assumptions
 
@@ -82,6 +82,29 @@ Complete the OfficePulse AI backend/dashboard pass: fix remaining MongoDB/Mongoo
 - [x] Refactor frontend into reusable API, realtime, notification, dashboard, management, usage, alert, and visualizer modules.
 - [x] Add normal dashboard view, graphical office visualizer, browser notifications, and responsive light/dark/system theme support.
 - [x] Run requested install/build/test/audit validation and update this handover plus completed work.
+- [x] Replace the Discord bot placeholder with a Node.js/TypeScript discord.js bot package.
+- [x] Add backend-only API client for bot commands.
+- [x] Add Google AI Studio/Gemini humanization through official `@google/genai`.
+- [x] Default Discord bot Gemini model to `gemini-flash-latest` and document `gemini-3.5-flash` as the stable Flash pin.
+- [x] Add slash and prefix command handlers for status, room, usage, alerts, devices, device, nodes, pending, top, waste, visual, health, help, and bot-config.
+- [x] Add backend Socket.IO proactive alerts with polling fallback and guild alert-channel config.
+- [x] Promote `!status`, `!room <name>`, and `!usage` as polished hackathon-required bot commands.
+- [x] Route all Discord command responses through Gemini humanization when enabled, with strong rule-based fallbacks.
+- [x] Fix room lookup for exact, case-insensitive, whitespace-insensitive, bracket-stripped, alias, and fuzzy matches.
+- [x] Add backend-powered slash autocomplete for room and device options.
+- [x] Add backend timeout/retry behavior for bot API reads.
+- [x] Add rejection-focused bot tests for required help output, room lookup variants, and prefix parsing.
+- [x] Refactor frontend navigation to Overview, Devices, Cost, and Alerts only.
+- [x] Move Settings access into the sidebar Live operations card.
+- [x] Replace Visualizer navigation with a frosted overview toggle and overlay.
+- [x] Rename Usage to Cost and merge room cost breakdowns into the Cost page.
+- [x] Move node management into Settings > Device Nodes with friendly terminology.
+- [x] Simplify Devices to one persisted Card/List view at a time.
+- [x] Simplify Alerts into a frosted notification list with local read/unread state.
+- [x] Add alert unread badge, in-app toast, browser notification click routing, and highlight query handling.
+- [x] Refactor Settings into top tabs with only active tab content visible.
+- [x] Split Settings categories into focused tab components for General, Device Nodes, Rooms, Devices, Alerts, Notifications, Appearance, and Audit.
+- [x] Add Discord bot tests and include the bot in the root workspace build.
 
 ## Files Being Created
 
@@ -148,6 +171,54 @@ npm run build
 npm run seed -w backend
 ```
 
+Latest validation for Discord bot implementation:
+
+```bash
+npm run build -w discord-bot
+npm test -w discord-bot
+npm run build
+```
+
+Latest validation for Discord bot rejection-fix pass:
+
+```bash
+npm run build -w discord-bot
+npm test -w discord-bot
+npm run commands:register -w discord-bot
+```
+
+Manual smoke for Discord bot rejection-fix pass:
+
+```bash
+Local command-handler smoke for status, room with "Work Room 1", and usage
+Live bot restart; ready as Hepta Dot and connected to backend Socket.IO
+```
+
+Latest validation for frontend UI refactor:
+
+```bash
+npm run build -w frontend
+Invoke-WebRequest http://localhost:3000/
+Invoke-WebRequest http://localhost:3000/cost
+Invoke-WebRequest http://localhost:3000/devices
+Invoke-WebRequest http://localhost:3000/alerts
+Invoke-WebRequest "http://localhost:3000/settings?section=device-nodes"
+```
+
+Latest validation for Settings tabs refactor:
+
+```bash
+npm run build -w frontend
+Invoke-WebRequest http://localhost:3000/settings
+Invoke-WebRequest "http://localhost:3000/settings?section=device-nodes"
+Invoke-WebRequest "http://localhost:3000/settings?tab=rooms"
+Invoke-WebRequest "http://localhost:3000/settings?tab=devices"
+Invoke-WebRequest "http://localhost:3000/settings?tab=alerts"
+Invoke-WebRequest "http://localhost:3000/settings?tab=notifications"
+Invoke-WebRequest "http://localhost:3000/settings?tab=appearance"
+Invoke-WebRequest "http://localhost:3000/settings?tab=audit"
+```
+
 Latest validation for duplicate-node guard and dashboard cost display:
 
 ```bash
@@ -172,6 +243,9 @@ npx --yes --package @playwright/cli playwright-cli open http://localhost:5100/
 - Keep frontend and simulator backend URLs as `http://localhost:4000`; a separate Python process currently owns IPv4 `0.0.0.0:4000`, so `http://127.0.0.1:4000` can hang.
 - Use the isolated `officepulse_test` database for backend tests and avoid inserting validation-only nodes into the default `officepulse` dev database.
 - Future dashboard and bot work must use backend APIs only.
+- Discord bot work must use backend APIs only and must not import simulator internals.
+- Discord bot Gemini calls must run server-side only, never from frontend/browser.
+- Verified from Google AI developer docs on 2026-07-04: `gemini-3.5-flash` is the current stable Flash model, and `gemini-flash-latest` is the latest Flash alias.
 - Real ESP32 firmware must preserve the telemetry contract documented in `PROJECT_PLAN.md`.
 - The mock backend is intentionally minimal and only supports simulator validation before the real backend exists.
 - The simulator visualizer is an internal fake-ESP32 control panel at `http://localhost:5100/`; do not move it into `/frontend`.

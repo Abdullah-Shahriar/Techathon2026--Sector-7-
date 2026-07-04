@@ -27,13 +27,13 @@ export function RoomVisualBlock({
   return (
     <ReusableSheet
       title={room.name}
-      description="Room-level energy, node, device, and alert state."
+      description="Room-level energy, office node, device, and alert state."
       trigger={
         <div
           role="button"
           tabIndex={0}
           className={cn(
-            "group relative flex min-h-[260px] flex-col rounded-xl border bg-background p-4 text-left transition hover:bg-accent/40",
+            "frost-card group relative flex min-h-[260px] flex-col rounded-xl p-4 text-left transition hover:bg-accent/40",
             activeAlerts.length > 0 && "border-warning/60",
             className
           )}
@@ -57,7 +57,7 @@ export function RoomVisualBlock({
               <ReusableSheet
                 key={device.id}
                 title={device.name}
-                description={`${device.externalDeviceId} on ${device.nodeId}`}
+                description={device.externalDeviceId}
                 trigger={
                   <span className="flex flex-col items-center gap-2 rounded-md p-2 transition hover:bg-muted">
                     <DeviceVisualIcon device={device} />
@@ -93,8 +93,8 @@ function RoomDetail({ room, devices, node, alerts }: { room: RoomSummary; device
         <DetailMetric label="Off-time cost" value={formatBdt(room.offTimeCostBdtToday)} />
       </div>
       <div className="rounded-xl border p-4">
-        <p className="mb-3 flex items-center gap-2 font-medium"><Cpu className="h-4 w-4 text-muted-foreground" />Node</p>
-        <p className="text-sm text-muted-foreground">{node?.nodeId ?? "No node assigned"}</p>
+        <p className="mb-3 flex items-center gap-2 font-medium"><Cpu className="h-4 w-4 text-muted-foreground" />Office node</p>
+        <p className="text-sm text-muted-foreground">{node ? "Connected to this room" : "No office node assigned"}</p>
         {node && <div className="mt-3"><StatusBadge status={node.status} /></div>}
       </div>
       <div className="space-y-3">

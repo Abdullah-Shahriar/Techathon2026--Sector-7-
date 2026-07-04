@@ -33,14 +33,14 @@ export function DeviceCard({ device, onClick }: { device: DeviceSummary; onClick
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="flex items-center gap-2 font-semibold"><Cpu className="h-4 w-4 text-muted-foreground" />{device.name}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{device.externalDeviceId} / {device.nodeId}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{device.externalDeviceId}</p>
           </div>
           <StatusBadge status={device.status} />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div><p className="text-muted-foreground">Power</p><p className="font-semibold">{formatWatts(device.powerWatts)}</p></div>
           <div><p className="text-muted-foreground">Cost</p><p className="font-semibold">{formatBdt(device.costBdtToday)}</p></div>
-          <div><p className="text-muted-foreground">Voltage</p><p className="font-semibold">{device.voltageVolts} V</p></div>
+          <div><p className="text-muted-foreground">Status</p><p className="font-semibold capitalize">{device.status}</p></div>
           <div><p className="text-muted-foreground">Usage</p><p className="font-semibold">{formatKwh(device.unitKwhToday)}</p></div>
         </div>
       </CardContent>

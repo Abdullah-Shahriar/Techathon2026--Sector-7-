@@ -91,7 +91,7 @@ export function AlertSettingsPanel({
   }
 
   return (
-    <Card>
+    <Card className="frost-card">
       <CardHeader>
         <CardTitle>Alert settings</CardTitle>
         <CardDescription>Global defaults plus room/device overrides, constrained by backend-supported scopes.</CardDescription>

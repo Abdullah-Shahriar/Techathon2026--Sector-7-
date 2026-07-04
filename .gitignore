@@ -79,6 +79,9 @@ web_modules/
 .env.production.local
 .env.local
 
+# Discord bot local runtime config
+discord-bot/data/*.json
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

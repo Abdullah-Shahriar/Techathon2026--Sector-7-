@@ -13,7 +13,7 @@ export function OfficeFloorPlan({
   alerts: AlertSummary[];
 }) {
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
+    <div className="frost-card rounded-xl p-4 shadow-sm">
       <div className="grid min-h-[640px] gap-4 lg:grid-cols-3 lg:grid-rows-[1.1fr_0.9fr]">
         {rooms.map((room, index) => (
           <RoomVisualBlock

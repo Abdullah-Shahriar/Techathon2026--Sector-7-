@@ -1,5 +1,5 @@
-import { NodesPage } from "@/features/nodes/NodesPage";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <NodesPage />;
+  redirect("/settings?section=device-nodes");
 }

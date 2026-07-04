@@ -200,7 +200,7 @@ The frontend dashboard:
 
 Do not move the simulator visualizer into `/frontend`. `/frontend` is the backend-owned dashboard.
 
-## Future Discord Bot Plan
+## Discord Bot Plan
 
 The Discord bot will:
 
@@ -208,6 +208,11 @@ The Discord bot will:
 - Report room and office power status.
 - Trigger backend-approved commands if control features are added.
 - Never import or query simulator internals.
+- Use discord.js with TypeScript.
+- Use Google AI Studio/Gemini through the official `@google/genai` SDK for server-side humanized Discord text.
+- Keep `GEMINI_MODEL` configurable and default to `gemini-flash-latest`, with `gemini-3.5-flash` available as the verified stable Flash pin as of 2026-07-04.
+- Fall back to rule-based messages if Gemini is disabled, missing, timed out, or unavailable.
+- Listen for backend Socket.IO alert/node events and use polling fallback for proactive Discord alerts.
 
 ## Future Wokwi/Tinkercad Schematic Plan
 

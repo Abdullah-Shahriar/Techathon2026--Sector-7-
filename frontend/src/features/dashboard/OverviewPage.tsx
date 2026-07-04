@@ -1,179 +1,165 @@
 "use client";
 
 import Link from "next/link";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AlertTriangle, BellRing, Building2, CircleDollarSign, Cpu, RadioTower, TimerReset, Zap } from "lucide-react";
+import { useState } from "react";
+import { Building2, CircleDollarSign, Cpu, Grid3X3, PlugZap, TimerReset, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartCard } from "@/components/shared/ChartCard";
-import { DeviceCard, RoomCard } from "@/components/shared/DomainCards";
+import { FrostCard } from "@/components/shared/FrostCard";
 import { EmptyState, ErrorState, LoadingState } from "@/components/shared/States";
 import { MetricGrid, StatCard } from "@/components/shared/StatCard";
 import { PageHeader, SectionHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useOfficeDataContext } from "@/features/api/OfficeDataProvider";
-import { formatBdt, formatDate, formatKwh, formatWatts } from "@/lib/format";
-import { useUsageAnalytics } from "@/features/usage/useUsageAnalytics";
+import type { DeviceSummary, RoomSummary } from "@/features/api/types";
+import { OfficeFloorPlan } from "@/features/visualizer/OfficeFloorPlan";
+import { formatBdt, formatKwh, formatWatts } from "@/lib/format";
 
 export function OverviewPage() {
   const { state, error } = useOfficeDataContext();
-  const { timeline, roomUsage } = useUsageAnalytics();
+  const [visualizerOpen, setVisualizerOpen] = useState(false);
 
   if (error && !state) return <ErrorState message={error} />;
   if (!state) return <LoadingState />;
 
   const summary = state.officeSummary;
-  const topDevices = [...state.devices].sort((a, b) => b.costBdtToday - a.costBdtToday).slice(0, 4);
-  const topRooms = [...(roomUsage?.rooms ?? [])].sort((a, b) => b.costBdt - a.costBdt).slice(0, 5);
-  const trendData = (timeline?.buckets ?? []).slice(-24).map((bucket) => ({
-    label: formatDate(bucket.start),
-    power: Number(bucket.averagePowerWatts.toFixed(2)),
-    cost: Number(bucket.costBdt.toFixed(2))
-  }));
+  const topDevices = [...state.devices].sort((a, b) => b.costBdtToday - a.costBdtToday).slice(0, 5);
+  const pendingNodes = state.pendingNodes.length;
 
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow="Dashboard"
         title="Energy overview"
-        description="Current load, cost, alerts, and room health."
+        description="A cleaner live view for load, units, cost, and waste."
         actions={
-          <>
-            <Button asChild variant="outline"><Link href="/visualizer"><Building2 className="h-4 w-4" />Visualizer</Link></Button>
-            <Button asChild><Link href="/usage"><Zap className="h-4 w-4" />Analyze usage</Link></Button>
-          </>
+          <Button className="glass-button" variant="outline" onClick={() => setVisualizerOpen(true)}>
+            <Grid3X3 className="h-4 w-4" />
+            Visualizer
+          </Button>
         }
       />
 
+      {pendingNodes > 0 && (
+        <FrostCard tone="warning" className="rounded-lg p-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-background/60">
+                <PlugZap className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold">
+                  {pendingNodes} device node{pendingNodes === 1 ? " is" : "s are"} waiting to be connected.
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Pair them to rooms in Settings so the dashboard can organize incoming telemetry.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild className="bg-background/80 text-foreground hover:bg-background">
+                <Link href="/settings?section=device-nodes">Connect all</Link>
+              </Button>
+              <Button asChild variant="outline" className="bg-background/60">
+                <Link href="/settings?section=device-nodes">Manage</Link>
+              </Button>
+            </div>
+          </div>
+        </FrostCard>
+      )}
+
       <MetricGrid>
-        <StatCard label="Current load" value={formatWatts(summary.currentPowerWatts)} helper={`${summary.approxCurrentAmps} A live draw`} icon={Zap} />
-        <StatCard label="Today units" value={formatKwh(summary.unitKwhToday)} helper={formatBdt(summary.costBdtToday)} icon={TimerReset} />
-        <StatCard label="Today cost" value={formatBdt(summary.costBdtToday)} helper="Across active intervals" icon={CircleDollarSign} />
-        <StatCard label="Monthly estimate" value={formatBdt(summary.estimatedMonthlyBillBdt)} helper={`${formatKwh(summary.unitKwhThisMonth)} this month`} icon={CircleDollarSign} />
-        <StatCard label="Off-time cost" value={formatBdt(summary.offTimeCostBdtToday)} helper={formatKwh(summary.offTimeUnitKwhToday)} icon={AlertTriangle} tone={summary.offTimeCostBdtToday > 0 ? "warning" : "success"} />
-        <StatCard label="Active alerts" value={String(state.activeAlerts.length)} helper={`${state.pendingNodes.length} pending nodes`} icon={BellRing} tone={state.activeAlerts.length ? "danger" : "success"} />
+        <StatCard tone="energy" label="Current load" value={formatWatts(summary.currentPowerWatts)} helper={`${state.devices.filter((device) => device.status === "on").length}/${state.devices.length} devices on`} icon={Zap} />
+        <StatCard tone="info" label="Today units" value={formatKwh(summary.unitKwhToday)} helper="Backend-calculated kWh" icon={TimerReset} />
+        <StatCard tone="cost" label="Today cost" value={formatBdt(summary.costBdtToday)} helper={`${formatKwh(summary.unitKwhThisMonth)} this month`} icon={CircleDollarSign} />
+        <StatCard tone="cost" label="Monthly estimate" value={formatBdt(summary.estimatedMonthlyBillBdt)} helper="Based on backend totals" icon={CircleDollarSign} />
+        <StatCard tone={summary.offTimeCostBdtToday > 0 ? "warning" : "success"} label="Off-time cost" value={formatBdt(summary.offTimeCostBdtToday)} helper={formatKwh(summary.offTimeUnitKwhToday)} icon={PlugZap} />
       </MetricGrid>
 
-      <section className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
-        <ChartCard title="Energy trend" description="Average power by interval.">
-          <div className="h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="label" minTickGap={26} stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} />
-                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} />
-                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                <Area type="monotone" dataKey="power" name="Average W" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.18)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
+      <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <FrostCard tone="info" className="rounded-lg p-5">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-background/70">
+              <Building2 className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium uppercase text-muted-foreground">Office state</p>
+              <h3 className="mt-2 text-2xl font-semibold tracking-normal">{formatWatts(summary.currentPowerWatts)}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {state.rooms.length} rooms are reporting through the backend. Cost and energy numbers shown here are display-only frontend formatting of backend-calculated values.
+              </p>
+              <Button asChild variant="outline" className="mt-4 bg-background/60">
+                <Link href="/cost">Open cost breakdown</Link>
+              </Button>
+            </div>
           </div>
-        </ChartCard>
+        </FrostCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Operations snapshot</CardTitle>
-            <CardDescription>Rooms, devices, nodes, and alerts.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            <SnapshotItem icon={<Building2 className="h-4 w-4" />} label="Rooms" value={`${state.rooms.length} active`} />
-            <SnapshotItem icon={<Cpu className="h-4 w-4" />} label="Devices" value={`${state.devices.filter((device) => device.status === "on").length}/${state.devices.length} on`} />
-            <SnapshotItem icon={<RadioTower className="h-4 w-4" />} label="Nodes" value={`${state.nodes.filter((node) => node.status === "active").length}/${state.nodes.length} active`} />
-            <SnapshotItem icon={<BellRing className="h-4 w-4" />} label="Alerts" value={`${state.activeAlerts.length} active`} />
-          </CardContent>
-        </Card>
-      </section>
-
-      <section>
-        <SectionHeader title="Rooms" description="Live room state." actions={<Button asChild variant="outline"><Link href="/rooms">Manage rooms</Link></Button>} />
-        <div className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-          {state.rooms.map((room) => {
-            const alertCount = state.activeAlerts.filter((alert) => alert.roomId === room.roomId).length;
-            return <RoomCard key={room.roomId} room={room} alertCount={alertCount} />;
-          })}
+        <div>
+          <SectionHeader title="Top consuming devices" description="Compact today view ranked by cost." />
+          <div className="mt-4 grid gap-3">
+            {topDevices.length === 0 ? (
+              <EmptyState title="No device usage yet" />
+            ) : (
+              topDevices.map((device) => (
+                <TopDeviceRow
+                  key={device.id}
+                  device={device}
+                  room={state.rooms.find((room) => room.roomId === device.roomId)}
+                />
+              ))
+            )}
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <ChartCard title="Room cost comparison" description="Top room totals for the selected range.">
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topRooms.map((room) => ({
-                name: state.rooms.find((item) => item.roomId === room.roomId)?.name ?? "Unassigned",
-                cost: room.costBdt
-              }))}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} />
-                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} />
-                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                <Bar dataKey="cost" name="BDT" fill="hsl(var(--accent))" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+      {visualizerOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-background/86 p-3 backdrop-blur-xl md:p-6">
+          <div className="mx-auto max-w-7xl space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase text-muted-foreground">Special mode</p>
+                <h2 className="text-2xl font-semibold tracking-normal">Office visualizer</h2>
+              </div>
+              <Button className="glass-button" variant="outline" onClick={() => setVisualizerOpen(false)}>
+                <X className="h-4 w-4" />
+                Dashboard
+              </Button>
+            </div>
+            <OfficeFloorPlan rooms={state.rooms} devices={state.devices} nodes={state.nodes} alerts={state.activeAlerts} />
           </div>
-        </ChartCard>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Top consuming devices</CardTitle>
-            <CardDescription>Ranked by cost today.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            {topDevices.length === 0 ? <EmptyState title="No device usage yet" /> : topDevices.map((device) => <DeviceCard key={device.id} device={device} />)}
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent alerts</CardTitle>
-            <CardDescription>Active alerts that need attention.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {state.activeAlerts.length === 0 && <EmptyState title="No active alerts" description="The office is clear right now." />}
-            {state.activeAlerts.slice(0, 5).map((alert) => (
-              <div key={alert.id} className="rounded-lg border p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{alert.title}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{alert.message}</p>
-                  </div>
-                  <StatusBadge status={alert.severity} />
-                </div>
-              </div>
-            ))}
-            {state.activeAlerts.length > 0 && <Button asChild variant="outline"><Link href="/alerts">Open alert center</Link></Button>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending ESP32 nodes</CardTitle>
-            <CardDescription>Discovered room nodes waiting for assignment.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {state.pendingNodes.length === 0 && <EmptyState title="No pending nodes" description="All discovered nodes are handled." />}
-            {state.pendingNodes.slice(0, 4).map((node) => (
-              <div key={node.nodeId} className="flex items-center justify-between rounded-lg border p-3">
-                <div>
-                  <p className="font-medium">{node.nodeId}</p>
-                  <p className="text-sm text-muted-foreground">Sequence {node.lastSequence ?? "-"}</p>
-                </div>
-                <StatusBadge status={node.status} />
-              </div>
-            ))}
-            {state.pendingNodes.length > 0 && <Button asChild variant="outline"><Link href="/nodes">Handle nodes</Link></Button>}
-          </CardContent>
-        </Card>
-      </section>
+        </div>
+      )}
     </div>
   );
 }
 
-function SnapshotItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function TopDeviceRow({ device, room }: { device: DeviceSummary; room?: RoomSummary }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border bg-muted/25 p-3">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">{icon}{label}</div>
-      <p className="font-semibold">{value}</p>
+    <FrostCard tone={device.status === "on" ? "energy" : "default"} className="rounded-lg p-4">
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Cpu className="h-4 w-4 text-muted-foreground" />
+            <p className="truncate font-semibold">{device.name}</p>
+            <StatusBadge status={device.status} />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{room?.name ?? "Unassigned room"}</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-right text-sm">
+          <Metric label="Power" value={formatWatts(device.powerWatts)} />
+          <Metric label="kWh" value={formatKwh(device.unitKwhToday)} />
+          <Metric label="Cost" value={formatBdt(device.costBdtToday)} />
+        </div>
+      </div>
+    </FrostCard>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[0.68rem] font-medium uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 whitespace-nowrap font-semibold">{value}</p>
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { io, type Socket } from "socket.io-client";
 import { api, backendUrl } from "./client";
 import type { AlertSummary, DashboardData, ManagedDevice, ManagedRoom, OfficeState } from "./types";
 import { notifyForAlert } from "../notifications/browserNotifications";
+import { isAlertRead, markAlertsRead, subscribeAlertReadChanges, unreadAlertCount } from "../alerts/alertReadStore";
+import { showAlertToast } from "../notifications/notificationManager";
 
 const realtimeEvents = [
   "office_state_updated",
@@ -28,6 +30,7 @@ export function useOfficeData() {
   });
   const [connectionState, setConnectionState] = useState<"connecting" | "live" | "polling" | "offline">("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const refreshInFlight = useRef(false);
   const refreshTimer = useRef<number | null>(null);
   const hasState = useRef(false);
@@ -52,6 +55,7 @@ export function useOfficeData() {
         managedDevices: settledValue(managedDevices, devicesFromState(state)),
         auditLogs: settledValue(auditLogs, [])
       });
+      setUnreadCount(unreadAlertCount(state.activeAlerts));
       hasState.current = true;
       setConnectionState("live");
       setError(null);
@@ -79,6 +83,10 @@ export function useOfficeData() {
     socket.on("connect", () => setConnectionState("live"));
     socket.on("disconnect", () => setConnectionState("polling"));
     socket.on("alert_created", (payload: AlertSummary & { occurrence?: { id?: string | null; repeatNumber?: number } }) => {
+      if (!isAlertRead(payload)) {
+        setUnreadCount((current) => current + 1);
+      }
+      showAlertToast(payload);
       notifyForAlert(payload);
       scheduleRefresh();
     });
@@ -94,7 +102,16 @@ export function useOfficeData() {
     };
   }, [refresh, scheduleRefresh]);
 
-  return { ...data, connectionState, error, refresh };
+  const markVisibleAlertsRead = useCallback((alerts: AlertSummary[]) => {
+    markAlertsRead(alerts);
+    setUnreadCount(unreadAlertCount(data.state?.activeAlerts ?? []));
+  }, [data.state?.activeAlerts]);
+
+  useEffect(() => subscribeAlertReadChanges(() => {
+    setUnreadCount(unreadAlertCount(data.state?.activeAlerts ?? []));
+  }), [data.state?.activeAlerts]);
+
+  return { ...data, connectionState, error, refresh, unreadAlertCount: unreadCount, markAlertsRead: markVisibleAlertsRead };
 }
 
 function settledValue<T>(result: PromiseSettledResult<T>, fallback: T): T {

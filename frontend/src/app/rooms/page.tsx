@@ -1,5 +1,5 @@
-import { RoomsPage } from "@/features/rooms/RoomsPage";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <RoomsPage />;
+  redirect("/cost");
 }

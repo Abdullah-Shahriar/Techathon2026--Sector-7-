@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Cpu, Filter } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Cpu, Filter, LayoutGrid, List } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader, SectionHeader } from "@/components/shared/PageHeader";
-import { ResponsiveTableOrCards } from "@/components/shared/DataTable";
+import { DataTable } from "@/components/shared/DataTable";
 import { DeviceCard } from "@/components/shared/DomainCards";
+import { FrostCard } from "@/components/shared/FrostCard";
 import { ReusableSheet } from "@/components/shared/ReusableSheet";
 import { SelectField } from "@/components/shared/FormField";
 import { ErrorState, LoadingState } from "@/components/shared/States";
@@ -17,9 +20,26 @@ import { DeviceManagementActions } from "./DeviceManagementActions";
 
 export function DevicesPage() {
   const { state, managedDevices, managedRooms, error, refresh } = useOfficeDataContext();
+  const searchParams = useSearchParams();
+  const highlightDevice = searchParams.get("highlightDevice");
   const [roomFilter, setRoomFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("officepulse:device-view");
+    if (stored === "cards" || stored === "list") {
+      setViewMode(stored);
+      return;
+    }
+    setViewMode(window.matchMedia("(min-width: 768px)").matches ? "list" : "cards");
+  }, []);
+
+  function chooseView(mode: "cards" | "list") {
+    setViewMode(mode);
+    window.localStorage.setItem("officepulse:device-view", mode);
+  }
 
   const liveById = useMemo(() => new Map((state?.devices ?? []).map((device) => [device.id, device])), [state?.devices]);
   const activeRooms = useMemo(() => managedRooms.filter((room) => room.isActive !== false), [managedRooms]);
@@ -43,9 +63,19 @@ export function DevicesPage() {
         eyebrow="Inventory"
         title="Devices"
         description="Filter, inspect, rename, move, archive, or restore devices."
+        actions={
+          <div className="frost-card flex rounded-md p-1">
+            <Button variant={viewMode === "cards" ? "secondary" : "ghost"} size="sm" onClick={() => chooseView("cards")}>
+              <LayoutGrid className="h-4 w-4" />Cards
+            </Button>
+            <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" onClick={() => chooseView("list")}>
+              <List className="h-4 w-4" />List
+            </Button>
+          </div>
+        }
       />
 
-      <Card>
+      <Card className="frost-card">
         <CardContent className="grid gap-4 p-5 md:grid-cols-4">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><Filter className="h-4 w-4" />Filters</div>
           <SelectField
@@ -70,37 +100,63 @@ export function DevicesPage() {
       </Card>
 
       <section>
-        <SectionHeader title="Device list" description={`${visibleDevices.length} matching devices`} />
-        <ResponsiveTableOrCards
-          columns={["Device", "Room", "State", "Power", "Usage", "Last changed"]}
-          rows={visibleDevices.map((device) => {
-            const live = liveById.get(device._id);
-            return [
-              <DeviceTitle key="title" device={device} />,
-              activeRooms.find((room) => room._id === device.roomId)?.name ?? "Unassigned",
-              <StatusBadge key="state" status={device.isActive === false ? "archived" : live?.status ?? "inactive"} />,
-              live ? formatWatts(live.powerWatts) : "0 W",
-              live ? `${formatKwh(live.unitKwhToday)} / ${formatBdt(live.costBdtToday)}` : "No usage",
-              live ? formatDate(live.lastChangedAt) : "Never"
-            ];
-          })}
-          cards={visibleDevices.map((device) => {
-            const live = liveById.get(device._id);
-            return <DeviceSheet key={device._id} managedDevice={device} liveDevice={live} rooms={activeRooms} onDone={refresh} />;
-          })}
-        />
-        <div className="mt-4 hidden grid-cols-2 gap-4 md:grid xl:grid-cols-3">
-          {visibleDevices.map((device) => {
-            const live = liveById.get(device._id);
-            return <DeviceSheet key={device._id} managedDevice={device} liveDevice={live} rooms={activeRooms} onDone={refresh} />;
-          })}
-        </div>
+        <SectionHeader title={viewMode === "cards" ? "Device cards" : "Device list"} description={`${visibleDevices.length} matching devices`} />
+        {viewMode === "list" ? (
+          <div className="mt-4">
+            <DataTable
+              columns={["Device", "Room", "State", "Power", "Usage", "Last changed", ""]}
+              rowClasses={visibleDevices.map((device) => highlightDevice === device._id ? "highlight-target bg-warning/10" : "")}
+              rows={visibleDevices.map((device) => {
+                const live = liveById.get(device._id);
+                return [
+                  <DeviceTitle key="title" device={device} />,
+                  activeRooms.find((room) => room._id === device.roomId)?.name ?? "Unassigned",
+                  <StatusBadge key="state" status={device.isActive === false ? "archived" : live?.status ?? "inactive"} />,
+                  live ? formatWatts(live.powerWatts) : "0 W",
+                  live ? `${formatKwh(live.unitKwhToday)} / ${formatBdt(live.costBdtToday)}` : "No usage",
+                  live ? formatDate(live.lastChangedAt) : "Never",
+                  <DeviceSheet
+                    key="manage"
+                    managedDevice={device}
+                    liveDevice={live}
+                    rooms={activeRooms}
+                    onDone={refresh}
+                    trigger={<Button variant="outline" size="sm">Manage</Button>}
+                  />
+                ];
+              })}
+            />
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {visibleDevices.map((device) => {
+              const live = liveById.get(device._id);
+              return (
+                <div key={device._id} className={highlightDevice === device._id ? "highlight-target rounded-xl" : ""}>
+                  <DeviceSheet managedDevice={device} liveDevice={live} rooms={activeRooms} onDone={refresh} />
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );
 }
 
-function DeviceSheet({ managedDevice, liveDevice, rooms, onDone }: { managedDevice: ManagedDevice; liveDevice?: DeviceSummary; rooms: ManagedRoom[]; onDone: () => Promise<void> }) {
+function DeviceSheet({
+  managedDevice,
+  liveDevice,
+  rooms,
+  onDone,
+  trigger
+}: {
+  managedDevice: ManagedDevice;
+  liveDevice?: DeviceSummary;
+  rooms: ManagedRoom[];
+  onDone: () => Promise<void>;
+  trigger?: React.ReactNode;
+}) {
   const displayDevice = liveDevice ?? {
     id: managedDevice._id,
     externalDeviceId: managedDevice.externalDeviceId,
@@ -127,8 +183,8 @@ function DeviceSheet({ managedDevice, liveDevice, rooms, onDone }: { managedDevi
   return (
     <ReusableSheet
       title={managedDevice.name}
-      description={`${managedDevice.externalDeviceId} / ${managedDevice.nodeId}`}
-      trigger={<div><DeviceCard device={displayDevice} /></div>}
+      description={managedDevice.externalDeviceId}
+      trigger={trigger ?? <div><DeviceCard device={displayDevice} /></div>}
     >
       <div className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -157,9 +213,9 @@ function DeviceTitle({ device }: { device: ManagedDevice }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border bg-muted/25 p-3">
+    <FrostCard className="rounded-lg p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 font-semibold">{value}</p>
-    </div>
+    </FrostCard>
   );
 }

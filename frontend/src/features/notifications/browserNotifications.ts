@@ -1,4 +1,5 @@
 import type { AlertSummary } from "../api/types";
+import { navigateToAlert } from "../alerts/alertNavigation";
 
 export function notificationPermission(): NotificationPermission | "unsupported" {
   if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
@@ -28,5 +29,6 @@ export function notifyForAlert(alert: Partial<AlertSummary> & { occurrence?: { i
   notification.onclick = () => {
     window.focus();
     notification.close();
+    navigateToAlert(alert as AlertSummary);
   };
 }

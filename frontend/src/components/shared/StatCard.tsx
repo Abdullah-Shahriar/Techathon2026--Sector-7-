@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { FrostCard } from "./FrostCard";
 
 export function StatCard({
   label,
@@ -13,24 +12,19 @@ export function StatCard({
   value: string;
   helper?: string;
   icon?: LucideIcon;
-  tone?: "default" | "success" | "warning" | "danger";
+  tone?: "default" | "success" | "warning" | "danger" | "energy" | "cost" | "info";
 }) {
   return (
-    <Card className={cn(
-      "overflow-hidden",
-      tone === "warning" && "border-warning/40",
-      tone === "danger" && "border-destructive/40",
-      tone === "success" && "border-success/40"
-    )}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+    <FrostCard tone={tone === "danger" ? "danger" : tone} className="overflow-hidden">
+      <div className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
         {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
+      </div>
+      <div className="p-4 pt-0">
         <div className="text-2xl font-semibold tracking-normal">{value}</div>
         {helper && <p className="mt-1 text-xs text-muted-foreground">{helper}</p>}
-      </CardContent>
-    </Card>
+      </div>
+    </FrostCard>
   );
 }
 

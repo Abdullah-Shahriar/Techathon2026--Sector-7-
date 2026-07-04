@@ -1,8 +1,9 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
-export function DataTable({ columns, rows }: { columns: string[]; rows: Array<Array<React.ReactNode>> }) {
+export function DataTable({ columns, rows, rowClasses = [] }: { columns: string[]; rows: Array<Array<React.ReactNode>>; rowClasses?: string[] }) {
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card">
+    <div className="overflow-x-auto rounded-xl border bg-card/70 backdrop-blur">
       <Table>
         <TableHeader>
           <TableRow>
@@ -11,7 +12,7 @@ export function DataTable({ columns, rows }: { columns: string[]; rows: Array<Ar
         </TableHeader>
         <TableBody>
           {rows.map((row, rowIndex) => (
-            <TableRow key={rowIndex}>
+            <TableRow key={rowIndex} className={cn(rowClasses[rowIndex])}>
               {row.map((cell, cellIndex) => <TableCell key={cellIndex}>{cell}</TableCell>)}
             </TableRow>
           ))}

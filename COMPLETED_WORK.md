@@ -672,3 +672,225 @@ Reconciled existing simulator node mappings:
 - `git diff --check` passed with line-ending warnings only.
 - Exact-name search for the removed device uptime field returned no matches.
 - `npm audit --omit=dev` reported 2 moderate vulnerabilities from Next's exact `postcss@8.4.31` dependency. npm's suggested fix requires `npm audit fix --force` and would install `next@9.3.3`, so it was not applied.
+
+## 2026-07-04 Discord Bot With Gemini Flash
+
+### Completed Milestones
+
+- Replaced the Discord bot placeholder with a full Node.js/TypeScript package.
+- Added discord.js slash command and prefix command support sharing the same command registry.
+- Added backend-only API client for OfficePulse state, rooms, devices, nodes, usage, settings, health, and alerts.
+- Added Google AI Studio/Gemini humanization through the official `@google/genai` SDK.
+- Set the default Gemini model to `gemini-flash-latest` and documented `gemini-3.5-flash` as the verified stable Flash model pin as of 2026-07-04.
+- Added safe Gemini prompts that instruct the model to use only backend data, never invent numbers, never calculate missing values, and never expose secrets.
+- Added rule-based fallback text when Gemini is disabled, missing, timed out, or unavailable.
+- Added Discord embeds for office status, room status, usage, alerts, devices, nodes, help, and visual summaries.
+- Added proactive alert posting from backend Socket.IO events with `GET /api/alerts` polling fallback.
+- Added simple per-guild JSON config for alert channel, proactive alert toggle, and AI humanization toggle.
+- Added command cooldowns and short backend cache to reduce spam and backend pressure.
+- Added tests for required command coverage, latest Flash alias default, and humanizer fallback.
+- Included `discord-bot` in the root npm workspace and root `npm run build`.
+
+### Files Created Or Modified
+
+- `package.json`
+- `package-lock.json`
+- `.gitignore`
+- `PROJECT_PLAN.md`
+- `AGENT_CURRENT_TASK.md`
+- `COMPLETED_WORK.md`
+- `discord-bot/package.json`
+- `discord-bot/tsconfig.json`
+- `discord-bot/.env.example`
+- `discord-bot/README.md`
+- `discord-bot/src/*`
+- `discord-bot/tests/*`
+
+### Commands Run
+
+- `npm install --workspace=officepulse-discord-bot @google/genai@2.10.0 discord.js@14.26.4 dotenv@17.4.2 pino@10.3.1 socket.io-client@4.8.3 zod@4.4.3`
+- `npm run build -w discord-bot`
+- `npm test -w discord-bot`
+- `npm test -w backend`
+- `npm test -w simulator`
+- `npm run build`
+- `npm audit --omit=dev`
+
+### Validation Results
+
+- Discord bot build passed.
+- Discord bot tests passed: 3 tests, 3 passing.
+- Backend tests passed: 9 tests, 9 passing.
+- Simulator tests passed: 13 tests, 13 passing.
+- Full workspace build passed for backend, frontend, simulator, and Discord bot.
+- `npm audit --omit=dev` reported unresolved advisories in Next/PostCSS and Discord's dependency chain through `undici`; npm's suggested fix requires `npm audit fix --force` and would make breaking/downgrading changes, so it was not applied.
+
+### Known Limitations
+
+- The bot has not been live-tested against Discord because no Discord token or guild credentials were provided.
+- Gemini calls have not been live-tested because no Google AI Studio API key was provided.
+- Proactive Discord alert delivery requires `ALERT_CHANNEL_ID` or `/bot-config alert_channel` plus bot send/embed permissions.
+
+### Next Recommended Steps
+
+- Create a Discord app/bot, invite it with `bot` and `applications.commands` scopes, set `.env`, run `npm run commands:register -w discord-bot`, and start the bot.
+- Use `GEMINI_MODEL=gemini-flash-latest` for automatic latest Flash behavior or pin `GEMINI_MODEL=gemini-3.5-flash` for stable production behavior.
+
+## 2026-07-04 Discord Bot Rejection Fix Pass
+
+### Completed Milestones
+
+- Promoted `!status`, `!room <name>`, and `!usage` as the visually distinct `Hackathon Required Command` responses.
+- Updated `/help` and `!help` so required commands appear first under `Required Commands`, with extra commands separated below.
+- Routed every command response through the humanizer when AI humanization is enabled, including devices, nodes, pending, top, waste, visual, health, and help.
+- Added weak Gemini-output detection so generic responses fall back to polished rule-based text.
+- Fixed room lookup for exact ID/name, case-insensitive matches, whitespace-insensitive matches, outer angle brackets, common aliases, and fuzzy suggestions.
+- Fixed prefix parsing so `!room Work Room 1` keeps the whole room name instead of only the first word.
+- Added backend-powered autocomplete for slash room and device options.
+- Added short backend read timeout and one retry for transient bot API failures.
+- Added Gemini quota backoff and concise AI error logging so 429s fall back quickly.
+- Expanded `/health` with backend URL plus Gemini configured/enabled/model/fallback status.
+- Updated Discord startup and ephemeral replies to current discord.js APIs.
+- Added rejection-focused tests for required help output, room lookup variants, and prefix parsing.
+
+### Files Created Or Modified
+
+- `AGENT_CURRENT_TASK.md`
+- `COMPLETED_WORK.md`
+- `discord-bot/README.md`
+- `discord-bot/src/ai/geminiClient.ts`
+- `discord-bot/src/ai/humanizer.ts`
+- `discord-bot/src/ai/prompts.ts`
+- `discord-bot/src/backend/backendClient.ts`
+- `discord-bot/src/backend/backendTypes.ts`
+- `discord-bot/src/commands/commandRegistry.ts`
+- `discord-bot/src/commands/prefix/prefixRouter.ts`
+- `discord-bot/src/index.ts`
+- `discord-bot/src/messages/embeds.ts`
+- `discord-bot/src/utils/matching.ts`
+- `discord-bot/tests/commandRegistry.test.ts`
+- `discord-bot/tests/matching.test.ts`
+
+### Commands Run
+
+- `npm run build -w discord-bot`
+- `npm test -w discord-bot`
+- `npm run commands:register -w discord-bot`
+- Local command-handler smoke for `status`, `room` with `Work Room 1`, and `usage`.
+
+### Validation Results
+
+- Discord bot TypeScript build passed.
+- Discord bot tests passed: 6 tests, 6 passing.
+- Guild slash commands registered successfully: 14 commands.
+- Local command-handler smoke verified the three required commands produce `Hackathon Required Command` embeds.
+- Live bot restarted successfully as `Hepta Dot` and connected to backend Socket.IO.
+
+## 2026-07-04 Frontend Dashboard Refactor
+
+### Completed Milestones
+
+- Reduced primary navigation to Overview, Devices, Cost, and Alerts for desktop sidebar and mobile bottom nav.
+- Removed Visualizer, Nodes, Rooms, and Settings from normal navigation.
+- Moved Settings access into the desktop sidebar Live operations card.
+- Added a frosted Visualizer button on Overview that opens the office map as a special full-screen overlay with a Dashboard close action.
+- Reworked Overview to remove operations snapshot, active-alert KPI, room cards, recent alerts, and chart-heavy sections.
+- Added the pending device-node overview banner with Connect all and Manage actions pointing to Settings > Device Nodes.
+- Renamed user-facing Usage to Cost and added `/cost`.
+- Merged useful room cost/current-power/kWh breakdown into the Cost page while keeping `/usage` as a compatibility route.
+- Redirected `/rooms` to `/cost` and `/nodes` to `/settings?section=device-nodes`.
+- Reworked Devices so users choose either Card view or List view, persisted in localStorage.
+- Reworked Alerts into a frosted notification-style list with severity tint, filters, read/unread dots, localStorage read state, and target navigation.
+- Added shared alert badge state for desktop/mobile navigation and in-app alert toasts.
+- Updated browser notification click behavior to navigate to the related alert target.
+- Moved node management into Settings as Device Nodes with friendly labels and raw node IDs only inside advanced details.
+- Added shared frosted card classes and a `FrostCard` component.
+
+### Files Created Or Modified
+
+- `AGENT_CURRENT_TASK.md`
+- `COMPLETED_WORK.md`
+- `frontend/src/app/alerts/page.tsx`
+- `frontend/src/app/cost/page.tsx`
+- `frontend/src/app/devices/page.tsx`
+- `frontend/src/app/globals.css`
+- `frontend/src/app/nodes/page.tsx`
+- `frontend/src/app/rooms/page.tsx`
+- `frontend/src/app/settings/page.tsx`
+- `frontend/src/app/usage/page.tsx`
+- `frontend/src/components/layout/AppShell.tsx`
+- `frontend/src/components/layout/DesktopSidebar.tsx`
+- `frontend/src/components/layout/MobileBottomNav.tsx`
+- `frontend/src/components/layout/TopHeader.tsx`
+- `frontend/src/components/layout/navItems.ts`
+- `frontend/src/components/shared/DataTable.tsx`
+- `frontend/src/components/shared/DomainCards.tsx`
+- `frontend/src/components/shared/FrostCard.tsx`
+- `frontend/src/components/shared/StatCard.tsx`
+- `frontend/src/features/alerts/AlertsPage.tsx`
+- `frontend/src/features/alerts/alertNavigation.ts`
+- `frontend/src/features/alerts/alertReadStore.ts`
+- `frontend/src/features/api/useOfficeData.ts`
+- `frontend/src/features/cost/CostPage.tsx`
+- `frontend/src/features/dashboard/OverviewPage.tsx`
+- `frontend/src/features/devices/DevicesPage.tsx`
+- `frontend/src/features/notifications/browserNotifications.ts`
+- `frontend/src/features/notifications/notificationManager.tsx`
+- `frontend/src/features/settings/DeviceNodesSettings.tsx`
+- `frontend/src/features/settings/SettingsPage.tsx`
+- `frontend/src/features/visualizer/OfficeFloorPlan.tsx`
+- `frontend/src/features/visualizer/RoomVisualBlock.tsx`
+
+### Commands Run
+
+- `npm run build -w frontend`
+- Restarted `npm run dev` in `frontend/`.
+- HTTP smoke checks for `/`, `/cost`, `/devices`, `/alerts`, and `/settings?section=device-nodes`.
+
+### Validation Results
+
+- Frontend production build passed.
+- Frontend dev server started at `http://localhost:3000`.
+- Sequential warm route smoke checks returned 200 for Overview, Cost, Devices, Alerts, and Settings > Device Nodes.
+- Compatibility routes `/rooms` and `/nodes` returned redirects.
+
+## 2026-07-04 Settings Page Tabs Refactor
+
+### Completed Milestones
+
+- Replaced the long Settings page with top tabs.
+- Added responsive horizontally scrollable frosted tab navigation.
+- Ensured only the active settings tab content is visible.
+- Split Settings into focused tab components: General, Device Nodes, Rooms, Devices, Alerts, Notifications, Appearance, and Audit.
+- Preserved `/settings?section=device-nodes` so dashboard node actions open the Device Nodes tab.
+- Added query support for direct tab links such as `/settings?tab=rooms`, `/settings?tab=devices`, and `/settings?tab=alerts`.
+- Kept Device Nodes inside Settings and kept raw node IDs inside expandable advanced details only.
+- Reused existing management actions for room rename/archive/restore and device rename/type/expected watts/move/archive/restore.
+- Kept alert settings backed by the existing backend alert settings API.
+
+### Files Created Or Modified
+
+- `AGENT_CURRENT_TASK.md`
+- `COMPLETED_WORK.md`
+- `frontend/src/features/settings/SettingsPage.tsx`
+- `frontend/src/features/settings/tabs/GeneralSettingsTab.tsx`
+- `frontend/src/features/settings/tabs/DeviceNodesSettingsTab.tsx`
+- `frontend/src/features/settings/tabs/RoomSettingsTab.tsx`
+- `frontend/src/features/settings/tabs/DeviceSettingsTab.tsx`
+- `frontend/src/features/settings/tabs/AlertSettingsTab.tsx`
+- `frontend/src/features/settings/tabs/NotificationSettingsTab.tsx`
+- `frontend/src/features/settings/tabs/AppearanceSettingsTab.tsx`
+- `frontend/src/features/settings/tabs/AuditSettingsTab.tsx`
+- `frontend/src/features/alerts/AlertSettingsPanel.tsx`
+
+### Commands Run
+
+- `npm run build -w frontend`
+- Restarted frontend dev server at `http://localhost:3000`.
+- HTTP smoke checks for `/settings`, `/settings?section=device-nodes`, and each `?tab=` value.
+
+### Validation Results
+
+- Frontend production build passed.
+- Settings routes returned 200 for General, Device Nodes, Rooms, Devices, Alerts, Notifications, Appearance, and Audit.
+- Frontend dev server restarted cleanly with an empty error log.

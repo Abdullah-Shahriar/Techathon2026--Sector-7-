@@ -78,6 +78,43 @@
 }
 
 @layer utilities {
+  .frost-card {
+    @apply border border-white/35 bg-white/70 shadow-sm shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.055] dark:shadow-black/20;
+  }
+
+  .frost-card-energy {
+    @apply border-cyan-400/35 bg-cyan-50/75 text-cyan-950 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-50;
+  }
+
+  .frost-card-cost {
+    @apply border-emerald-400/35 bg-emerald-50/75 text-emerald-950 dark:border-emerald-300/20 dark:bg-emerald-400/10 dark:text-emerald-50;
+  }
+
+  .frost-card-warning {
+    @apply border-amber-400/45 bg-amber-50/80 text-amber-950 dark:border-amber-300/25 dark:bg-amber-400/10 dark:text-amber-50;
+  }
+
+  .frost-card-info {
+    @apply border-sky-400/35 bg-sky-50/75 text-sky-950 dark:border-sky-300/20 dark:bg-sky-400/10 dark:text-sky-50;
+  }
+
+  .frost-card-success {
+    @apply border-lime-400/35 bg-lime-50/75 text-lime-950 dark:border-lime-300/20 dark:bg-lime-400/10 dark:text-lime-50;
+  }
+
+  .frost-card-danger {
+    @apply border-rose-400/45 bg-rose-50/80 text-rose-950 dark:border-rose-300/25 dark:bg-rose-400/10 dark:text-rose-50;
+  }
+
+  .glass-button {
+    @apply border border-white/40 bg-white/60 shadow-lg shadow-cyan-500/10 backdrop-blur-xl hover:bg-white/75 dark:border-white/15 dark:bg-white/10 dark:hover:bg-white/15;
+  }
+
+  .highlight-target {
+    @apply ring-2 ring-warning ring-offset-2 ring-offset-background shadow-lg shadow-warning/25;
+    animation: highlight-pulse 1.2s ease-in-out 3;
+  }
+
   .energy-grid-bg {
     background-image:
       linear-gradient(hsl(var(--border) / 0.55) 1px, transparent 1px),
@@ -92,5 +129,10 @@
   @keyframes fan-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+  }
+
+  @keyframes highlight-pulse {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
   }
 }
