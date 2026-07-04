@@ -2,16 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Command, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Command, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOfficeDataContext } from "@/features/api/OfficeDataProvider";
 import { navItems } from "./navItems";
 
 export function DesktopSidebar() {
   const pathname = usePathname();
-  const { connectionState, state } = useOfficeDataContext();
-  const pendingNodes = state?.pendingNodes.length ?? 0;
+  const { unreadAlertCount } = useOfficeDataContext();
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 bg-gradient-to-b from-sky-50/80 via-background to-emerald-50/70 p-2 dark:from-sky-950/20 dark:via-background dark:to-emerald-950/20 lg:flex lg:flex-col">
@@ -28,6 +26,7 @@ export function DesktopSidebar() {
         {navItems.map((item) => {
           const active = pathname === item.href || (item.href === "/cost" && pathname === "/usage");
           const Icon = item.icon;
+          const showBadge = item.href === "/alerts" && unreadAlertCount > 0;
           return (
             <Link
               key={item.href}
@@ -38,26 +37,26 @@ export function DesktopSidebar() {
               )}
             >
               <Icon className="h-4 w-4" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {showBadge && (
+                <span className="grid min-h-5 min-w-5 place-items-center rounded-full bg-destructive px-1.5 text-[0.65rem] font-semibold text-destructive-foreground shadow">
+                  {unreadAlertCount > 99 ? "99+" : unreadAlertCount}
+                </span>
+              )}
             </Link>
           );
         })}
       </nav>
-      <div className="frost-card mt-auto rounded-lg p-3">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Activity className="h-4 w-4" />
-          Live operations
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {connectionState === "live" ? "Realtime connected" : `Realtime ${connectionState}`}
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {pendingNodes ? `${pendingNodes} device node${pendingNodes === 1 ? "" : "s"} waiting` : "All device nodes handled"}
-        </p>
-        <Button asChild variant="outline" size="sm" className="mt-3 w-full bg-background/70">
-          <Link href="/settings"><Settings className="h-4 w-4" />Settings</Link>
-        </Button>
-      </div>
+      <Link
+        href="/settings"
+        className={cn(
+          "mt-auto flex h-10 items-center justify-center gap-2 rounded-md border bg-background/70 px-3 text-sm font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background",
+          pathname === "/settings" && "frost-card-info"
+        )}
+      >
+        <Settings className="h-4 w-4" />
+        Settings
+      </Link>
     </aside>
   );
 }

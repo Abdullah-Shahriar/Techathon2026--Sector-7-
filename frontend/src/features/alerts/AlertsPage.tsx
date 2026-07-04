@@ -10,7 +10,6 @@ import { ErrorState, LoadingState, EmptyState } from "@/components/shared/States
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { NotificationToggle } from "@/components/shared/NotificationToggle";
 import { useOfficeDataContext } from "@/features/api/OfficeDataProvider";
-import { api } from "@/features/api/client";
 import type { AlertSummary } from "@/features/api/types";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -22,25 +21,17 @@ export function AlertsPage() {
   const searchParams = useSearchParams();
   const highlightedAlert = searchParams.get("highlightAlert");
   const [severity, setSeverity] = useState("all");
-  const [status, setStatus] = useState("active");
-  const [historicalAlerts, setHistoricalAlerts] = useState<AlertSummary[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(highlightedAlert);
   const initialReadDone = useRef(false);
 
-  const sourceAlerts = state ? (status === "active" ? state.activeAlerts : historicalAlerts) : [];
-  const visibleAlerts = useMemo(() => filterAlerts(sourceAlerts, severity), [sourceAlerts, severity]);
+  const visibleAlerts = useMemo(() => filterAlerts(state?.activeAlerts ?? [], severity), [state?.activeAlerts, severity]);
 
   useEffect(() => {
-    if (status === "active") return;
-    void api.alerts(status).then((items) => setHistoricalAlerts(items.map(normalizeAlert))).catch(() => setHistoricalAlerts([]));
-  }, [status]);
-
-  useEffect(() => {
-    if (initialReadDone.current || status !== "active" || visibleAlerts.length === 0) return;
+    if (initialReadDone.current || visibleAlerts.length === 0) return;
     initialReadDone.current = true;
     const timer = window.setTimeout(() => markAlertsRead(visibleAlerts), 500);
     return () => window.clearTimeout(timer);
-  }, [markAlertsRead, status, visibleAlerts]);
+  }, [markAlertsRead, visibleAlerts]);
 
   if (error && !state) return <ErrorState message={error} />;
   if (!state) return <LoadingState />;
@@ -57,17 +48,7 @@ export function AlertsPage() {
       />
 
       <FrostCard className="rounded-lg p-5">
-        <div className="grid gap-4 md:grid-cols-[220px_220px_1fr] md:items-end">
-          <SelectField
-            label="Status"
-            value={status}
-            onValueChange={setStatus}
-            options={[
-              { value: "active", label: "Active" },
-              { value: "acknowledged", label: "Acknowledged" },
-              { value: "resolved", label: "Resolved" }
-            ]}
-          />
+        <div className="grid gap-4 md:grid-cols-[220px_1fr] md:items-end">
           <SelectField
             label="Severity"
             value={severity}
@@ -79,16 +60,15 @@ export function AlertsPage() {
               { value: "info", label: "Info" }
             ]}
           />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <AlertCount label="Visible" value={visibleAlerts.length} />
             <AlertCount label="Unread" value={unreadVisible} />
-            <AlertCount label="Active" value={state.activeAlerts.length} />
           </div>
         </div>
       </FrostCard>
 
       {visibleAlerts.length === 0 ? (
-        <EmptyState title="No alerts in this view" description="Try another status or severity filter." />
+        <EmptyState title="No alerts in this view" description="Try another severity filter." />
       ) : (
         <div className="grid gap-3">
           {visibleAlerts.map((alert) => {
@@ -119,7 +99,6 @@ export function AlertsPage() {
                       <BellRing className="h-4 w-4 text-muted-foreground" />
                       <p className="font-semibold">{alert.title}</p>
                       <StatusBadge status={alert.severity} />
-                      <StatusBadge status={alert.status} />
                     </div>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">{alert.message}</p>
                     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -194,31 +173,4 @@ function datePart(value: string | null): string {
 function timePart(value: string | null): string {
   if (!value) return "unknown";
   return new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(new Date(value));
-}
-
-function normalizeAlert(input: any): AlertSummary {
-  return {
-    id: String(input.id ?? input._id),
-    alertType: input.alertType,
-    scope: input.scope,
-    roomId: input.roomId ? String(input.roomId) : null,
-    deviceId: input.deviceId ? String(input.deviceId) : null,
-    nodeId: input.nodeId ?? null,
-    severity: input.severity,
-    status: input.status,
-    title: input.title,
-    message: input.message,
-    dataJson: input.dataJson ?? {},
-    createdAt: input.createdAt ? new Date(input.createdAt).toISOString() : null,
-    lastRepeatedAt: input.lastRepeatedAt ? new Date(input.lastRepeatedAt).toISOString() : null,
-    occurrences: Array.isArray(input.occurrences)
-      ? input.occurrences.map((occurrence: any) => ({
-          id: occurrence.id ?? occurrence.occurrenceId ?? occurrence._id ?? null,
-          occurredAt: occurrence.occurredAt ? new Date(occurrence.occurredAt).toISOString() : null,
-          message: occurrence.message,
-          dataJson: occurrence.dataJson ?? {},
-          repeatNumber: occurrence.repeatNumber
-        }))
-      : []
-  };
 }

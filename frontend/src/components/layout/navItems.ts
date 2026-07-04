@@ -6,14 +6,14 @@ import {
 } from "lucide-react";
 
 export const navItems = [
-  { label: "Overview", href: "/", icon: LayoutDashboard },
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Devices", href: "/devices", icon: Cpu },
   { label: "Cost", href: "/cost", icon: BarChart3 },
   { label: "Alerts", href: "/alerts", icon: BellRing }
 ];
 
 const routeTitles: Record<string, string> = {
-  "/": "Overview",
+  "/": "Dashboard",
   "/devices": "Devices",
   "/cost": "Cost",
   "/usage": "Cost",
@@ -25,5 +25,5 @@ const routeTitles: Record<string, string> = {
 };
 
 export function pageTitleForPath(pathname: string): string {
-  return routeTitles[pathname] ?? "Overview";
+  return routeTitles[pathname] ?? "Dashboard";
 }
