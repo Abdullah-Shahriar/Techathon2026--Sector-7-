@@ -1,5 +1,8 @@
-# Docs Placeholder
+# OfficePulse AI Documentation
 
-Do not implement this module yet. Read `PROJECT_PLAN.md` first.
-
-This folder will later contain system diagrams, Wokwi or Tinkercad schematic images or links, and hardware documentation for the OfficePulse AI project.
+- [Database schema](database-schema.md)
+- [REST and realtime API schema](api-schema.md)
+- [ESP32 telemetry contract](telemetry-contract.md)
+- [Project guide with diagrams](OfficePulse-AI-Project-Guide.docx)
+- [System design image](assets/system-design.jpeg)
+- [Electrical schematic](assets/electrical-schematic.png)
