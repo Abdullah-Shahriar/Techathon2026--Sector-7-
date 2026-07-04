@@ -458,6 +458,51 @@ test("connect all pending nodes creates rooms and pairs discovered devices", asy
   assert.equal(await Room.countDocuments({ name: /^Auto Room/ }), 2);
 });
 
+test("node reassign moves existing devices immediately without rewriting history", async () => {
+  await ingestTelemetry(telemetryPayload("room-node-future", 1, "boot", "future-fan-1", "on", 60), "test-device-key");
+
+  const firstRoom = await Room.create({ name: "First Room" });
+  const secondRoom = await Room.create({ name: "Second Room" });
+  await assignNodeToRoom("room-node-future", { roomId: String(firstRoom._id) });
+
+  await reassignNodeToRoom("room-node-future", { roomId: String(secondRoom._id), mode: "future_only" });
+
+  const node = await Esp32Node.findOne({ nodeId: "room-node-future" }).lean();
+  const device = await Device.findOne({ externalDeviceId: "future-fan-1" }).lean();
+  assert.equal(String(node?.roomId), String(secondRoom._id));
+  assert.equal(String(device?.roomId), String(secondRoom._id));
+  assert.ok(await DeviceRoomHistory.findOne({ externalDeviceId: "future-fan-1", mode: "future_only" }).lean());
+  assert.equal(await UsageInterval.countDocuments({ roomId: secondRoom._id }), 0);
+});
+
+test("ignoring a node archives devices and resolves node and device alerts", async () => {
+  await ingestTelemetry(telemetryPayload("room-node-ignore", 1, "boot", "ignore-fan-1", "on", 60), "test-device-key");
+
+  const deviceBefore = await Device.findOne({ externalDeviceId: "ignore-fan-1" }).lean();
+  assert.ok(deviceBefore);
+  assert.ok(await Alert.countDocuments({
+    status: "active",
+    $or: [{ nodeId: "room-node-ignore" }, { deviceId: deviceBefore._id }]
+  }) > 0);
+
+  await ignoreNode("room-node-ignore");
+
+  const node = await Esp32Node.findOne({ nodeId: "room-node-ignore" }).lean();
+  const device = await Device.findOne({ externalDeviceId: "ignore-fan-1" }).lean();
+  assert.equal(node?.status, "ignored");
+  assert.equal(node?.roomId, null);
+  assert.equal(device?.isActive, false);
+  assert.equal(device?.roomId, null);
+  assert.ok(device?.archivedAt);
+  assert.equal(await NodeDiscoveryEvent.countDocuments({ nodeId: "room-node-ignore", status: "ignored" }), 2);
+  assert.equal(await Alert.countDocuments({
+    status: "active",
+    $or: [{ nodeId: "room-node-ignore" }, { deviceId: deviceBefore._id }]
+  }), 0);
+  assert.ok(await NodeRoomHistory.findOne({ nodeId: "room-node-ignore", mode: "ignore" }).lean());
+  assert.ok(await DeviceRoomHistory.findOne({ externalDeviceId: "ignore-fan-1", mode: "ignore" }).lean());
+});
+
 test("telemetry schema accepts only the final top-level and device payload contract", () => {
   const payload = telemetryPayload("room-node-contract", 1, "manual_sync", "contract-fan-1", "on", 60);
   assert.deepEqual(Object.keys(payload).sort(), [
