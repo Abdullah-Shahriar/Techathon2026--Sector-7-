@@ -9,9 +9,6 @@ import { ensureSettings } from "./settings/settings.service.js";
 import { setSocketServer } from "./realtime/socket.js";
 
 async function main(): Promise<void> {
-  await connectMongo();
-  await ensureSettings();
-
   const app = createApp();
   const server = http.createServer(app);
   const io = new Server(server, {
@@ -27,20 +24,29 @@ async function main(): Promise<void> {
     socket.emit("connected", { ok: true });
   });
 
-  const offlineTimer = setInterval(() => {
-    void (async () => {
-      await checkOfflineNodes();
-      scheduleAggregateAlerts();
-    })().catch((error) => logger.error({ error }, "Background alert check failed"));
-  }, 10_000);
+  let offlineTimer: NodeJS.Timeout | null = null;
+
+  const startBackgroundJobs = (): void => {
+    if (offlineTimer) return;
+    offlineTimer = setInterval(() => {
+      void (async () => {
+        await checkOfflineNodes();
+        scheduleAggregateAlerts();
+      })().catch((error) => logger.error({ error }, "Background alert check failed"));
+    }, 10_000);
+  };
 
   server.listen(config.port, () => {
     logger.info({ port: config.port }, "OfficePulse backend listening");
   });
 
+  void initializeDatabaseWithRetry(startBackgroundJobs);
+
   const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
     logger.info({ signal }, "Shutdown requested");
-    clearInterval(offlineTimer);
+    if (offlineTimer) {
+      clearInterval(offlineTimer);
+    }
     io.close();
     server.close();
     await disconnectMongo();
@@ -53,6 +59,25 @@ async function main(): Promise<void> {
   process.on("SIGTERM", () => {
     void shutdown("SIGTERM");
   });
+}
+
+async function initializeDatabaseWithRetry(onReady: () => void, attempt = 1): Promise<void> {
+  try {
+    await connectMongo();
+    await ensureSettings();
+    onReady();
+    logger.info("Backend database initialization complete");
+  } catch (error) {
+    const retryMs = Math.min(30_000, 2_000 * attempt);
+    logger.error({
+      attempt,
+      retryMs,
+      error: error instanceof Error ? error.message : String(error)
+    }, "Backend database initialization failed; retrying");
+    setTimeout(() => {
+      void initializeDatabaseWithRetry(onReady, attempt + 1);
+    }, retryMs).unref();
+  }
 }
 
 await main();
