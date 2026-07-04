@@ -26,6 +26,7 @@ export async function ingestTelemetry(payload: TelemetryPayload, apiKey: string)
   nodeId: string;
   nodeStatus: string;
   sequenceStatus: SequenceStatus;
+  ignoredReason?: string;
   discoveredDevices: number;
   updatedDevices: number;
 }> {
@@ -46,6 +47,18 @@ export async function ingestTelemetry(payload: TelemetryPayload, apiKey: string)
   const previousSequence = node.lastSequence;
   const sequenceStatus = await recordSequence(node.nodeId, previousSequence, payload.sequence, receivedAt);
   const previousStatus = node.status;
+
+  if (sequenceStatus === "duplicate") {
+    return {
+      accepted: true,
+      nodeId: payload.nodeId,
+      nodeStatus: node.status,
+      sequenceStatus,
+      ignoredReason: `Telemetry sequence ${payload.sequence} was ignored because the latest accepted sequence is ${previousSequence}.`,
+      discoveredDevices: 0,
+      updatedDevices: 0
+    };
+  }
 
   node.lastSeenAt = receivedAt;
   node.lastSequence = payload.sequence;

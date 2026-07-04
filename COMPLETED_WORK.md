@@ -303,12 +303,12 @@ This file is append-only. Add new completed milestones with timestamps, files cr
 - `npm test`: passed, 13 tests.
 - `/state`: Manual Mode default, paused auto state, 3 room nodes, and 15 devices confirmed.
 - Latest telemetry root keys exactly matched the then-current node identity, sequence, event, change-list, and devices contract.
-- Latest device telemetry keys exactly matched `id`, `measurements`, `ratedPowerWatts`, and `status`.
+- Earlier validation used the pre-tightening device telemetry shape; this was superseded by the narrower payload contract below.
 - Measurement keys exactly matched `currentAmps`, `powerWatts`, and `voltageVolts`.
 - Manual switch API sent `eventType: state_change` with `changedDeviceIds: ["work1-fan-1"]`.
 - `POST /nodes/room-node-work1/send-now` sent only the Work Room 1 ESP32 payload.
 - `POST /telemetry/send-all-now` returned three separate room-node send results.
-- Custom measurement profile produced ON measurements with `voltageVolts: 220`, `currentAmps: 0.364`, `powerWatts: 80`, and `ratedPowerWatts: 120`.
+- Custom measurement profile produced ON measurements with `voltageVolts: 220`, `currentAmps: 0.364`, and `powerWatts: 80`.
 - Browser UI rendered 3 room cards, 15 device cards, 15 device switches, 0 legacy per-device action buttons, 3 telemetry cards, and 4 node-send cards.
 - Browser payload previews contained none of `"sourceType"`, `"sentAt"`, `"timezone"`, `"roomId"`, `"roomName"`, `"reason"`, `"powerMode"`, or `"sensors"`.
 - Browser switch interaction turned `drawing-light-1` ON, updated the card, and showed a `state_change` payload for that device.
@@ -610,3 +610,65 @@ Reconciled existing simulator node mappings:
 - Backend build passed.
 - Backend tests passed: 7 tests, 7 passing.
 - Frontend build passed.
+
+## 2026-07-04 Backend Completion And Dashboard Refactor
+
+### Completed Milestones
+
+- Changed duplicate/old telemetry handling so stale sequences still write `telemetry_events` and `node_sequence_logs`, but do not mutate node state, latest device state, usage intervals, or alerts.
+- Added alert occurrence persistence through `alert_occurrences` and exposed occurrence IDs in active alert summaries.
+- Added room/node/device management APIs for unassign, reassign, forget/ignore, archive, restore, and move operations.
+- Added `device_room_history`, `node_room_history`, and `audit_logs` records for management changes.
+- Resolved discovery alerts when nodes are assigned/ignored or devices are handled.
+- Expanded usage ranges and timeline grouping names for dashboard analytics.
+- Replaced the monolithic frontend page with typed API helpers, reusable dashboard components, normal and graphical views, management panels, usage charts, alert settings, browser notifications, and light/dark/system theme support.
+- Confirmed the removed device uptime field no longer appears in the repository and simulator telemetry tests still enforce the six allowed top-level fields.
+
+### Files Created Or Modified
+
+- `backend/src/audit/*`
+- `backend/src/models/index.ts`
+- `backend/src/telemetry/telemetry.service.ts`
+- `backend/src/alerts/*`
+- `backend/src/usage/usage.service.ts`
+- `backend/src/nodes/*`
+- `backend/src/rooms/*`
+- `backend/src/devices/*`
+- `backend/src/settings/settings.service.ts`
+- `backend/src/state/state.service.ts`
+- `backend/tests/officepulse.test.ts`
+- `frontend/src/lib/*`
+- `frontend/src/components/*`
+- `frontend/src/app/*`
+- `frontend/package.json`
+- `package-lock.json`
+- `PROJECT_PLAN.md`
+- `AGENT_CURRENT_TASK.md`
+- `backend/README.md`
+- `frontend/README.md`
+- `COMPLETED_WORK.md`
+
+### Commands Run
+
+- `npm install -w frontend lucide-react next-themes recharts clsx`
+- `npm install`
+- `npm run build -w backend`
+- `npm run test -w backend`
+- `npm run build -w frontend`
+- `npm run build`
+- `npm run test -w backend`
+- `npm run test -w simulator`
+- `npm audit --omit=dev`
+- `git diff --check`
+- Playwright CLI smoke at `http://localhost:3000/` with 390px mobile viewport and graphical view switch.
+
+### Validation Results
+
+- Full workspace build passed.
+- Final frontend build passed after metadata/icon update.
+- Backend tests passed: 9 tests, 9 passing.
+- Simulator tests passed: 13 tests, 13 passing.
+- Playwright smoke rendered normal and graphical dashboard views at mobile width with 0 console errors and 0 warnings.
+- `git diff --check` passed with line-ending warnings only.
+- Exact-name search for the removed device uptime field returned no matches.
+- `npm audit --omit=dev` reported 2 moderate vulnerabilities from Next's exact `postcss@8.4.31` dependency. npm's suggested fix requires `npm audit fix --force` and would install `next@9.3.3`, so it was not applied.

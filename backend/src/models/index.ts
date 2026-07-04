@@ -6,7 +6,8 @@ const RoomSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
     description: { type: String, default: "" },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true, index: true },
+    archivedAt: { type: Date, default: null }
   },
   { timestamps: true, collection: "rooms" }
 );
@@ -17,7 +18,7 @@ const Esp32NodeSchema = new Schema(
     roomId: { type: objectId, ref: "Room", default: null, index: true },
     status: {
       type: String,
-      enum: ["pending", "active", "ignored", "offline"],
+      enum: ["pending", "active", "ignored", "offline", "archived"],
       default: "pending",
       index: true
     },
@@ -37,7 +38,8 @@ const DeviceSchema = new Schema(
     name: { type: String, required: true, trim: true },
     type: { type: String, enum: ["fan", "light", "other"], default: "other", index: true },
     expectedPowerWatts: { type: Number, default: null },
-    isActive: { type: Boolean, default: true, index: true }
+    isActive: { type: Boolean, default: true, index: true },
+    archivedAt: { type: Date, default: null }
   },
   { timestamps: true, collection: "devices" }
 );
@@ -74,6 +76,7 @@ const UsageIntervalSchema = new Schema(
   {
     deviceId: { type: objectId, ref: "Device", required: true, index: true },
     roomId: { type: objectId, ref: "Room", default: null, index: true },
+    roomIdAtTime: { type: objectId, ref: "Room", default: null, index: true },
     startAt: { type: Date, required: true, index: true },
     endAt: { type: Date, required: true, index: true },
     durationSeconds: { type: Number, required: true },
@@ -105,6 +108,7 @@ const AlertSchema = new Schema(
         occurredAt: { type: Date, required: true },
         message: { type: String, required: true },
         dataJson: { type: Schema.Types.Mixed, default: {} },
+        occurrenceId: { type: objectId, ref: "AlertOccurrence", default: null },
         repeatNumber: { type: Number, required: true }
       }],
       default: []
@@ -115,6 +119,19 @@ const AlertSchema = new Schema(
     acknowledgedAt: { type: Date, default: null }
   },
   { timestamps: { createdAt: false, updatedAt: true }, collection: "alerts" }
+);
+
+const AlertOccurrenceSchema = new Schema(
+  {
+    alertId: { type: objectId, ref: "Alert", required: true, index: true },
+    alertType: { type: String, required: true, index: true },
+    occurredAt: { type: Date, required: true, index: true },
+    message: { type: String, required: true },
+    dataJson: { type: Schema.Types.Mixed, default: {} },
+    notificationStatus: { type: String, enum: ["pending", "sent", "suppressed"], default: "pending", index: true },
+    repeatNumber: { type: Number, required: true }
+  },
+  { timestamps: true, collection: "alert_occurrences" }
 );
 
 const AlertSettingSchema = new Schema(
@@ -169,6 +186,44 @@ const NodeDiscoveryEventSchema = new Schema(
 );
 NodeDiscoveryEventSchema.index({ nodeId: 1, externalDeviceId: 1, eventType: 1 }, { unique: true });
 
+const DeviceRoomHistorySchema = new Schema(
+  {
+    deviceId: { type: objectId, ref: "Device", required: true, index: true },
+    nodeId: { type: String, default: null, index: true },
+    externalDeviceId: { type: String, default: null, index: true },
+    fromRoomId: { type: objectId, ref: "Room", default: null, index: true },
+    toRoomId: { type: objectId, ref: "Room", default: null, index: true },
+    mode: { type: String, default: "future_only", index: true },
+    reason: { type: String, default: "manual" },
+    changedAt: { type: Date, required: true, index: true }
+  },
+  { timestamps: true, collection: "device_room_history" }
+);
+
+const NodeRoomHistorySchema = new Schema(
+  {
+    nodeId: { type: String, required: true, index: true },
+    fromRoomId: { type: objectId, ref: "Room", default: null, index: true },
+    toRoomId: { type: objectId, ref: "Room", default: null, index: true },
+    mode: { type: String, default: "future_only", index: true },
+    reason: { type: String, default: "manual" },
+    changedAt: { type: Date, required: true, index: true }
+  },
+  { timestamps: true, collection: "node_room_history" }
+);
+
+const AuditLogSchema = new Schema(
+  {
+    action: { type: String, required: true, index: true },
+    resourceType: { type: String, required: true, index: true },
+    resourceId: { type: String, default: null, index: true },
+    actor: { type: String, default: "system", index: true },
+    dataJson: { type: Schema.Types.Mixed, default: {} },
+    createdAt: { type: Date, default: Date.now, index: true }
+  },
+  { collection: "audit_logs" }
+);
+
 export type MongoDocument = mongoose.Document & Record<string, any>;
 export type RoomDocument = MongoDocument;
 export type Esp32NodeDocument = MongoDocument;
@@ -177,10 +232,14 @@ export type LatestDeviceStateDocument = MongoDocument;
 export type TelemetryEventDocument = MongoDocument;
 export type UsageIntervalDocument = MongoDocument;
 export type AlertDocument = MongoDocument;
+export type AlertOccurrenceDocument = MongoDocument;
 export type AlertSettingDocument = MongoDocument;
 export type SettingsDocument = MongoDocument;
 export type NodeSequenceLogDocument = MongoDocument;
 export type NodeDiscoveryEventDocument = MongoDocument;
+export type DeviceRoomHistoryDocument = MongoDocument;
+export type NodeRoomHistoryDocument = MongoDocument;
+export type AuditLogDocument = MongoDocument;
 
 function model<T extends MongoDocument>(name: string, schema: Schema): Model<T> {
   return (mongoose.models[name] as Model<T> | undefined) ?? mongoose.model<T>(name, schema);
@@ -193,7 +252,11 @@ export const LatestDeviceState = model<LatestDeviceStateDocument>("LatestDeviceS
 export const TelemetryEvent = model<TelemetryEventDocument>("TelemetryEvent", TelemetryEventSchema);
 export const UsageInterval = model<UsageIntervalDocument>("UsageInterval", UsageIntervalSchema);
 export const Alert = model<AlertDocument>("Alert", AlertSchema);
+export const AlertOccurrence = model<AlertOccurrenceDocument>("AlertOccurrence", AlertOccurrenceSchema);
 export const AlertSetting = model<AlertSettingDocument>("AlertSetting", AlertSettingSchema);
 export const Settings = model<SettingsDocument>("Settings", SettingsSchema);
 export const NodeSequenceLog = model<NodeSequenceLogDocument>("NodeSequenceLog", NodeSequenceLogSchema);
 export const NodeDiscoveryEvent = model<NodeDiscoveryEventDocument>("NodeDiscoveryEvent", NodeDiscoveryEventSchema);
+export const DeviceRoomHistory = model<DeviceRoomHistoryDocument>("DeviceRoomHistory", DeviceRoomHistorySchema);
+export const NodeRoomHistory = model<NodeRoomHistoryDocument>("NodeRoomHistory", NodeRoomHistorySchema);
+export const AuditLog = model<AuditLogDocument>("AuditLog", AuditLogSchema);

@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import { config } from "./config.js";
+import { auditRouter } from "./audit/audit.routes.js";
 import { alertRouter } from "./alerts/alert.routes.js";
 import { deviceRouter } from "./devices/device.routes.js";
 import { healthRouter } from "./health/health.routes.js";
@@ -47,6 +48,7 @@ export function createApp(): express.Express {
   app.use("/api/usage", usageRouter);
   app.use("/api/alerts", alertRouter);
   app.use("/api/settings", settingsRouter);
+  app.use("/api/audit-logs", auditRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -17,14 +17,19 @@ process.env.NODE_ENV = "test";
 const { connectMongo, disconnectMongo } = await import("../src/db/mongoose.js");
 const {
   Alert,
+  AlertOccurrence,
   AlertSetting,
+  AuditLog,
   Device,
+  DeviceRoomHistory,
   Esp32Node,
   LatestDeviceState,
   NodeDiscoveryEvent,
+  NodeRoomHistory,
   NodeSequenceLog,
   Room,
   Settings,
+  TelemetryEvent,
   UsageInterval
 } = await import("../src/models/index.js");
 const { ingestTelemetry } = await import("../src/telemetry/telemetry.service.js");
@@ -39,7 +44,9 @@ const {
 } = await import("../src/usage/usage.service.js");
 const { evaluateAggregateAlerts, getEffectiveAlertSetting } = await import("../src/alerts/alert.service.js");
 const { getSettings } = await import("../src/settings/settings.service.js");
-const { assignNodeToRoom, createRoomFromNode } = await import("../src/nodes/node.service.js");
+const { assignNodeToRoom, createRoomFromNode, reassignNodeToRoom, unassignNode } = await import("../src/nodes/node.service.js");
+const { archiveDevice, moveDeviceToRoom, restoreDevice } = await import("../src/devices/device.service.js");
+const { archiveRoom, restoreRoom } = await import("../src/rooms/room.service.js");
 const { zonedDateTimeToUtc } = await import("../src/utils/time.js");
 
 await connectMongo();
@@ -86,6 +93,33 @@ test("telemetry ingest discovers ESP32 nodes, devices, and missed sequences", as
   assert.equal(second.sequenceStatus, "missed");
   assert.ok(await NodeSequenceLog.findOne({ nodeId: "room-node-lab", sequence: 3, status: "missed" }).lean());
   assert.ok(await Alert.findOne({ alertType: "missed_telemetry_sequence", nodeId: "room-node-lab", status: "active" }).lean());
+});
+
+test("duplicate or old telemetry stores event and sequence log without mutating live state", async () => {
+  const first = await ingestTelemetry(telemetryPayload("room-node-dup", 5, "state_change", "dup-fan-1", "on", 60), "test-device-key");
+  assert.equal(first.sequenceStatus, "ok");
+
+  const device = await Device.findOne({ nodeId: "room-node-dup", externalDeviceId: "dup-fan-1" }).lean();
+  assert.ok(device);
+  const latestBefore = await LatestDeviceState.findOne({ deviceId: device._id }).lean();
+  const alertCountBefore = await Alert.countDocuments();
+
+  const duplicate = await ingestTelemetry(telemetryPayload("room-node-dup", 4, "state_change", "dup-fan-1", "off", 0), "test-device-key");
+  assert.equal(duplicate.accepted, true);
+  assert.equal(duplicate.sequenceStatus, "duplicate");
+  assert.match(duplicate.ignoredReason ?? "", /latest accepted sequence is 5/);
+  assert.equal(duplicate.discoveredDevices, 0);
+  assert.equal(duplicate.updatedDevices, 0);
+
+  const nodeAfter = await Esp32Node.findOne({ nodeId: "room-node-dup" }).lean();
+  assert.equal(nodeAfter?.lastSequence, 5);
+  const latestAfter = await LatestDeviceState.findOne({ deviceId: device._id }).lean();
+  assert.equal(latestAfter?.status, latestBefore?.status);
+  assert.equal(latestAfter?.powerWatts, latestBefore?.powerWatts);
+  assert.equal(await UsageInterval.countDocuments({ deviceId: device._id }), 0);
+  assert.equal(await Alert.countDocuments(), alertCountBefore);
+  assert.ok(await TelemetryEvent.findOne({ nodeId: "room-node-dup", sequence: 4, isValid: true }).lean());
+  assert.ok(await NodeSequenceLog.findOne({ nodeId: "room-node-dup", sequence: 4, status: "duplicate" }).lean());
 });
 
 test("usage intervals split at office boundaries and calculate kWh and BDT", async () => {
@@ -346,6 +380,56 @@ test("off-time active device alerts create visible repeat occurrences", async ()
   assert.ok(alert);
   assert.equal(alert.occurrences.length, 2);
   assert.deepEqual(alert.occurrences.map((occurrence: { repeatNumber: number }) => occurrence.repeatNumber), [1, 2]);
+  assert.equal(await AlertOccurrence.countDocuments({ alertId: alert._id }), 2);
+  assert.equal(alert.occurrences.every((occurrence: { occurrenceId?: unknown }) => occurrence.occurrenceId), true);
+});
+
+test("node, room, and device management writes history, audit logs, and resolves discovery alerts", async () => {
+  await ingestTelemetry(telemetryPayload("room-node-manage", 1, "boot", "manage-fan-1", "on", 60), "test-device-key");
+
+  const room = await Room.create({ name: "Manage Room" });
+  const secondRoom = await Room.create({ name: "Second Room" });
+  await assignNodeToRoom("room-node-manage", { roomId: String(room._id) });
+
+  const assignedNode = await Esp32Node.findOne({ nodeId: "room-node-manage" }).lean();
+  const assignedDevice = await Device.findOne({ nodeId: "room-node-manage", externalDeviceId: "manage-fan-1" }).lean();
+  assert.equal(String(assignedNode?.roomId), String(room._id));
+  assert.equal(String(assignedDevice?.roomId), String(room._id));
+  assert.equal(await Alert.countDocuments({ nodeId: "room-node-manage", status: "active", alertType: { $in: ["unknown_esp32_discovered", "new_device_discovered"] } }), 0);
+  assert.equal(await NodeDiscoveryEvent.countDocuments({ nodeId: "room-node-manage", status: "handled" }), 2);
+
+  await unassignNode("room-node-manage", { moveExistingDevicesFromNow: true });
+  const unassignedNode = await Esp32Node.findOne({ nodeId: "room-node-manage" }).lean();
+  const unassignedDevice = await Device.findOne({ externalDeviceId: "manage-fan-1" }).lean();
+  assert.equal(unassignedNode?.roomId, null);
+  assert.equal(unassignedNode?.status, "pending");
+  assert.equal(unassignedDevice?.roomId, null);
+
+  await reassignNodeToRoom("room-node-manage", { roomId: String(secondRoom._id), mode: "move_existing_devices_from_now" });
+  const movedDevice = await Device.findOne({ externalDeviceId: "manage-fan-1" }).lean();
+  assert.equal(String(movedDevice?.roomId), String(secondRoom._id));
+
+  await moveDeviceToRoom(String(movedDevice?._id), { roomId: String(room._id) });
+  const manuallyMovedDevice = await Device.findById(movedDevice?._id).lean();
+  assert.equal(String(manuallyMovedDevice?.roomId), String(room._id));
+
+  await archiveDevice(String(movedDevice?._id));
+  assert.equal((await Device.findById(movedDevice?._id).lean())?.isActive, false);
+  await restoreDevice(String(movedDevice?._id));
+  assert.equal((await Device.findById(movedDevice?._id).lean())?.isActive, true);
+
+  await archiveRoom(String(room._id));
+  assert.equal((await Room.findById(room._id).lean())?.isActive, false);
+  assert.equal((await Device.findById(movedDevice?._id).lean())?.roomId, null);
+  await restoreRoom(String(room._id));
+  assert.equal((await Room.findById(room._id).lean())?.isActive, true);
+
+  assert.ok(await NodeRoomHistory.findOne({ nodeId: "room-node-manage", mode: "assign" }).lean());
+  assert.ok(await NodeRoomHistory.findOne({ nodeId: "room-node-manage", mode: "unassign" }).lean());
+  assert.ok(await DeviceRoomHistory.findOne({ externalDeviceId: "manage-fan-1", mode: "move_existing_devices_from_now" }).lean());
+  assert.ok(await AuditLog.findOne({ action: "node_unassigned", resourceId: "room-node-manage" }).lean());
+  assert.ok(await AuditLog.findOne({ action: "device_moved", resourceId: String(movedDevice?._id) }).lean());
+  assert.ok(await AuditLog.findOne({ action: "room_archived", resourceId: String(room._id) }).lean());
 });
 
 test("telemetry schema accepts only the final top-level and device payload contract", () => {

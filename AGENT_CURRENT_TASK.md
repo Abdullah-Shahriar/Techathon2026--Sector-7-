@@ -6,7 +6,7 @@ Read `PROJECT_PLAN.md`, then this file, then `COMPLETED_WORK.md` before doing an
 
 ## Current Task
 
-Implement the OfficePulse AI MongoDB-backed backend and a basic Next.js verification frontend after finishing the simulator compatibility pass. Backend stack is MongoDB, Mongoose, TypeScript, Express, Zod, and Socket.IO. Do not use Prisma, SQLite, Prisma migrations, `prisma/schema.prisma`, or prisma scripts.
+Complete the OfficePulse AI backend/dashboard pass: fix remaining MongoDB/Mongoose backend correctness gaps, add safe room/node/device management, audit/history support, alert occurrence visibility, richer usage queries, and replace the basic Next.js verification dashboard with a professional responsive dashboard plus graphical office visualizer. Backend stack remains MongoDB, Mongoose, TypeScript, Express, Zod, and Socket.IO. Do not use Prisma, SQLite, Prisma migrations, `prisma/schema.prisma`, or prisma scripts.
 
 ## Current Assumptions
 
@@ -74,6 +74,14 @@ Implement the OfficePulse AI MongoDB-backed backend and a basic Next.js verifica
 - [x] Prevent assigning more than one active/offline ESP32 node to the same room.
 - [x] Change the top dashboard cost metric from projected monthly estimate to actual month-to-date cost.
 - [x] Improve pending-node room-name suggestions for the three simulator room nodes.
+- [x] Fix duplicate/old telemetry sequence handling so stale payloads cannot mutate latest state or usage.
+- [x] Resolve discovery alerts when nodes/devices are handled.
+- [x] Add safe room, node, and device management APIs with audit/history records.
+- [x] Add explicit alert occurrence collection/API while preserving active alert summaries.
+- [x] Expand usage range/grouping support to the requested names.
+- [x] Refactor frontend into reusable API, realtime, notification, dashboard, management, usage, alert, and visualizer modules.
+- [x] Add normal dashboard view, graphical office visualizer, browser notifications, and responsive light/dark/system theme support.
+- [x] Run requested install/build/test/audit validation and update this handover plus completed work.
 
 ## Files Being Created
 

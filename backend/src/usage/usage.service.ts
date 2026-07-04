@@ -24,7 +24,19 @@ const groupByValues = ["second", "minute", "hour", "day", "week", "month", "year
 export const usageQuerySchema = z.object({
   start: z.string().datetime().optional(),
   end: z.string().datetime().optional(),
-  range: z.enum(["today", "yesterday", "week", "month", "year", "custom"]).default("today"),
+  range: z.enum([
+    "today",
+    "yesterday",
+    "week",
+    "this_week",
+    "last_7_days",
+    "month",
+    "this_month",
+    "last_30_days",
+    "year",
+    "this_year",
+    "custom"
+  ]).default("today"),
   roomId: z.string().optional(),
   deviceId: z.string().optional()
 });
@@ -102,6 +114,7 @@ export async function recordUsageIntervalFromPreviousState(
     await UsageInterval.insertMany(segments.map((segment) => ({
       deviceId: previous.deviceId,
       roomId: roomId ?? null,
+      roomIdAtTime: roomId ?? null,
       startAt: segment.startAt,
       endAt: segment.endAt,
       durationSeconds: segment.durationSeconds,
@@ -176,13 +189,15 @@ export async function getUsageSummary(query: unknown = {}, now = new Date()): Pr
 }> {
   const settings = await getSettings();
   const usageRange = resolveUsageRange(query, settings.timezone, now);
-  const [totals, today, yesterday, week, month, year] = await Promise.all([
+  const [totals, today, yesterday, thisWeek, last7Days, thisMonth, last30Days, thisYear] = await Promise.all([
     summarizeRange(usageRange.start, usageRange.end, usageRange.filters),
     summarizeResolvedPreset("today", settings.timezone, now, usageRange.filters),
     summarizeResolvedPreset("yesterday", settings.timezone, now, usageRange.filters),
-    summarizeResolvedPreset("week", settings.timezone, now, usageRange.filters),
-    summarizeResolvedPreset("month", settings.timezone, now, usageRange.filters),
-    summarizeResolvedPreset("year", settings.timezone, now, usageRange.filters)
+    summarizeResolvedPreset("this_week", settings.timezone, now, usageRange.filters),
+    summarizeResolvedPreset("last_7_days", settings.timezone, now, usageRange.filters),
+    summarizeResolvedPreset("this_month", settings.timezone, now, usageRange.filters),
+    summarizeResolvedPreset("last_30_days", settings.timezone, now, usageRange.filters),
+    summarizeResolvedPreset("this_year", settings.timezone, now, usageRange.filters)
   ]);
 
   return {
@@ -191,7 +206,7 @@ export async function getUsageSummary(query: unknown = {}, now = new Date()): Pr
     end: usageRange.end.toISOString(),
     filters: usageRange.filters,
     totals,
-    presets: { today, yesterday, week, month, year }
+    presets: { today, yesterday, this_week: thisWeek, last_7_days: last7Days, this_month: thisMonth, last_30_days: last30Days, this_year: thisYear }
   };
 }
 
@@ -407,18 +422,29 @@ export function resolveUsageRange(query: unknown = {}, timezone: string, now = n
   if (parsed.range === "yesterday") {
     return { range: "yesterday", start: addDays(todayStart, -1), end: todayStart, filters };
   }
-  if (parsed.range === "week") {
-    return { range: "week", start: addDays(todayStart, -6), end: now, filters };
+  if (parsed.range === "week" || parsed.range === "last_7_days") {
+    return { range: "last_7_days", start: addDays(todayStart, -6), end: now, filters };
   }
-  if (parsed.range === "month") {
-    return { range: "month", start: startOfZonedMonth(now, timezone), end: now, filters };
+  if (parsed.range === "this_week") {
+    const local = localParts(now, timezone);
+    const dayOfWeek = new Date(Date.UTC(local.year, local.month - 1, local.day)).getUTCDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    return { range: "this_week", start: addDays(todayStart, mondayOffset), end: now, filters };
   }
 
-  return { range: "year", start: startOfZonedYear(now, timezone), end: now, filters };
+  if (parsed.range === "month" || parsed.range === "this_month") {
+    return { range: "this_month", start: startOfZonedMonth(now, timezone), end: now, filters };
+  }
+
+  if (parsed.range === "last_30_days") {
+    return { range: "last_30_days", start: addDays(todayStart, -29), end: now, filters };
+  }
+
+  return { range: "this_year", start: startOfZonedYear(now, timezone), end: now, filters };
 }
 
 function summarizeResolvedPreset(
-  range: "today" | "yesterday" | "week" | "month" | "year",
+  range: "today" | "yesterday" | "this_week" | "last_7_days" | "this_month" | "last_30_days" | "this_year",
   timezone: string,
   now: Date,
   filters: UsageRange["filters"]

@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { sendOk } from "../utils/api.js";
-import { createRoom, deactivateRoom, getRoom, listRooms, updateRoom } from "./room.service.js";
+import { archiveRoom, createRoom, deactivateRoom, getRoom, listRooms, restoreRoom, updateRoom } from "./room.service.js";
 
 export const roomRouter = Router();
 
 roomRouter.get("/", asyncHandler(async (_request, response) => {
-  sendOk(response, await listRooms());
+  sendOk(response, await listRooms({ includeInactive: _request.query.includeInactive === "true" }));
 }));
 
 roomRouter.post("/", asyncHandler(async (request, response) => {
@@ -31,6 +31,22 @@ roomRouter.patch("/:id", asyncHandler(async (request, response) => {
 
 roomRouter.delete("/:id", asyncHandler(async (request, response) => {
   const room = await deactivateRoom(request.params.id);
+  if (!room) {
+    throw new Error("Room not found");
+  }
+  sendOk(response, room);
+}));
+
+roomRouter.post("/:id/archive", asyncHandler(async (request, response) => {
+  const room = await archiveRoom(request.params.id);
+  if (!room) {
+    throw new Error("Room not found");
+  }
+  sendOk(response, room);
+}));
+
+roomRouter.post("/:id/restore", asyncHandler(async (request, response) => {
+  const room = await restoreRoom(request.params.id);
   if (!room) {
     throw new Error("Room not found");
   }

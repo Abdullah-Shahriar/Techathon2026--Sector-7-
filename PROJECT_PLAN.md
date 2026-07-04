@@ -65,7 +65,7 @@ Repository modules:
 
 - `simulator/`: TypeScript Node.js simulator for fake ESP32 room nodes. Implemented first.
 - `backend/`: Express + TypeScript + MongoDB/Mongoose IoT API. Receives telemetry and owns state, usage, cost, alerts, and realtime events.
-- `frontend/`: Basic Next.js verification dashboard that reads backend APIs and Socket.IO events.
+- `frontend/`: Responsive Next.js operations dashboard that reads backend APIs and Socket.IO events.
 - `discord-bot/`: Future Discord bot. Placeholder only for now.
 - `docs/`: Future diagrams, schematics, and demo documentation. Placeholder only for now.
 
@@ -171,16 +171,20 @@ Backend database collections:
 - `telemetry_events`
 - `usage_intervals`
 - `alerts`
+- `alert_occurrences`
 - `alert_settings`
 - `settings`
 - `node_sequence_logs`
 - `node_discovery_events`
+- `device_room_history`
+- `node_room_history`
+- `audit_logs`
 
 The backend must not use Prisma or SQLite.
 
-## Future Frontend Plan
+## Frontend Plan
 
-The basic frontend dashboard:
+The frontend dashboard:
 
 - Fetch current state from backend APIs.
 - Subscribe to backend real-time updates.
@@ -188,9 +192,13 @@ The basic frontend dashboard:
 - Show per-device status, current watts, and on-time.
 - Surface after-hours or high-usage alerts from backend data.
 - Let a user create or assign rooms from pending ESP32 nodes.
-- Let a user edit office time, BDT/kWh, heartbeat timeout, and basic alert settings.
+- Let a user safely unassign, reassign, forget, archive, and restore nodes, rooms, and devices through backend APIs.
+- Show both a normal dashboard view and a graphical office visualizer.
+- Use backend-owned usage, timing, alert, cost, and kWh values only.
+- Let a user edit office time, BDT/kWh, heartbeat timeout, and scoped alert settings.
+- Support responsive layouts, browser notifications, and light/dark/system theme selection.
 
-Do not move the simulator visualizer into `/frontend`. `/frontend` is reserved for the future boss-facing dashboard.
+Do not move the simulator visualizer into `/frontend`. `/frontend` is the backend-owned dashboard.
 
 ## Future Discord Bot Plan
 

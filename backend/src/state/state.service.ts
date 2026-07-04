@@ -127,6 +127,7 @@ export async function getOfficeState(now = new Date()): Promise<unknown> {
       dataJson: alert.dataJson,
       occurrences: Array.isArray(alert.occurrences)
         ? alert.occurrences.map((occurrence: any) => ({
+            id: occurrence.occurrenceId ? String(occurrence.occurrenceId) : occurrence._id ? String(occurrence._id) : null,
             occurredAt: occurrence.occurredAt?.toISOString?.() ?? null,
             message: occurrence.message,
             dataJson: occurrence.dataJson ?? {},

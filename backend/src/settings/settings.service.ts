@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { recordAuditLog } from "../audit/audit.service.js";
 import { config } from "../config.js";
 import { AlertSetting, Settings, type SettingsDocument } from "../models/index.js";
 
@@ -55,7 +56,14 @@ export async function getSettings(): Promise<SettingsDocument> {
 
 export async function updateSettings(input: z.infer<typeof updateSettingsSchema>): Promise<SettingsDocument> {
   const parsed = updateSettingsSchema.parse(input);
-  return Settings.findOneAndUpdate({ key: "default" }, { $set: parsed }, { new: true, upsert: true });
+  const settings = await Settings.findOneAndUpdate({ key: "default" }, { $set: parsed }, { new: true, upsert: true });
+  await recordAuditLog({
+    action: "settings_changed",
+    resourceType: "settings",
+    resourceId: settings._id,
+    dataJson: parsed
+  });
+  return settings;
 }
 
 export async function seedDefaultAlertSettings(settings: SettingsDocument): Promise<void> {

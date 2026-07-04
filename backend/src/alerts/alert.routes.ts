@@ -4,7 +4,9 @@ import { sendOk } from "../utils/api.js";
 import {
   acknowledgeAlert,
   listAlerts,
+  listAlertOccurrences,
   listAlertSettings,
+  listAlertTypeMetadata,
   resolveAlert,
   updateAlertSettings
 } from "./alert.service.js";
@@ -17,6 +19,14 @@ alertRouter.get("/", asyncHandler(async (request, response) => {
 
 alertRouter.get("/settings", asyncHandler(async (_request, response) => {
   sendOk(response, await listAlertSettings());
+}));
+
+alertRouter.get("/types", asyncHandler(async (_request, response) => {
+  sendOk(response, listAlertTypeMetadata());
+}));
+
+alertRouter.get("/:id/occurrences", asyncHandler(async (request, response) => {
+  sendOk(response, await listAlertOccurrences(request.params.id));
 }));
 
 alertRouter.patch("/:id/acknowledge", asyncHandler(async (request, response) => {
